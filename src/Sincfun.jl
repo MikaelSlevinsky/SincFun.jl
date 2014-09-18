@@ -59,13 +59,10 @@ type sincfun{F<:Function,D<:Domain,T<:Number}
 			phipv = phipv[cutoff]
 			ωv = ωv[cutoff]
 			intold,intnew = intnew,h*dot(fphiv,phipv)
-			println(intold," ",intnew," ",n)
 		end
 		j=[-n:n]
 		n=length(cutoff[cutoff.==true])
-		println(length(cutoff)," ",length(fphiv))
 		j = j[cutoff]
-		println(intnew," ",h*dot(fphiv,phipv)," ",n)
 		new(n,h,fphiv,phipv,ωv,j,domain,α,β,γ,δ,ω)
 	end
 end
