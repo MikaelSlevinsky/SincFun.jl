@@ -22,9 +22,9 @@ We use the sincfun constructor on a function, potentially with the domain and pr
 The constructor also allows other domains and precisions and can also incorporate singularities.
 
 
-	f(x) = exp(x);g(x) = f(x)./(1.-x.^2).^(4/5).*log(1.+x);
-	sf = sincfun(f,-0.8,-0.8,0.0,1.0);
-	x = linspace(-0.999,0.999,101);
+	f(x) = exp(x);g(x) = f(x)./(1.-x.^2).^(4//5).*log(1.+x);
+	sf = sincfun(f,BigFloat,BigFloat("-0.8"),BigFloat("-0.8"),BigFloat("0.0"),BigFloat("1.0"));
+	x = linspace(BigFloat("-0.999"),BigFloat("0.999"),101);
 	println(norm(g(x)-sf[x])," ",sum(sf)," ",length(sf))
 
 
