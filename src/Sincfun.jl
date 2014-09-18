@@ -2,7 +2,7 @@ module Sincfun
 
 import Base
 
-export sincfun,Domain,Finite,Infinite,SemiInfinite1,SemiInfinite2
+export sincfun,Domain,Finite,Infinite1,Infinite2,SemiInfinite1,SemiInfinite2
 
 type Domain
 	psi::Function
@@ -11,7 +11,8 @@ type Domain
 end
 
 Finite = Domain(t->tanh(t),t->atanh(t),t->sech(t).^2)
-Infinite = Domain(t->sinh(t),t->asinh(t),t->cosh(t))
+Infinite1 = Domain(t->sinh(t),t->asinh(t),t->cosh(t))
+Infinite2 = Domain(t->t,t->t,t->0t+1)
 SemiInfinite1 = Domain(t->log(exp(t)+1),t->log(exp(t)-1),t->1./(1+exp(-t)))
 SemiInfinite2 = Domain(t->exp(t),t->log(t),t->exp(t))
 
@@ -45,7 +46,7 @@ type sincfun{F<:Function,D<:Domain,T<:Number}
 		phipv = phipv[cutoff]
 		ωv = ωv[cutoff]
 		intold,intnew = Inf,h*dot(fphiv,phipv)
-		while n < 2^14 && abs(intold-intnew) > -log(eps(T)^3)*intnew*eps(T)
+		while n < 2^14 && abs(intold-intnew) > -log(eps(T)^3)*abs(intnew)*eps(T)
 			n *= 2
 			h = log(Tpi*Tpi/2*Tone*n/(Tpi/2))/Tone/n
 			jh = h*[-n:n]
