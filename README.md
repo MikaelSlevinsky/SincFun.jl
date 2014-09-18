@@ -13,9 +13,24 @@ The basic usage of the package is like so:
 We use the sincfun constructor on a function, potentially with the domain and precision specified as well. Without specification, the domain is [-1,1] with double precision.
 
 
-	f(x) = exp(x)./(x.^2.+1)
-	sf = sincfun(f)
-	x = linspace(-1.0,1.0,101)
-	norm(f(x)-sf[x])
+	f(x) = exp(x);
+	sf = sincfun(f);
+	x = linspace(-1.0,1.0,101);
+	println(norm(f(x)-sf[x])," ",sum(sf)," ",length(sf))
+
+
+The constructor also allows other domains and precisions and can also incorporate singularities.
+
+
+	f(x) = exp(x);g(x) = f(x)./(1.-x.^2).^(4/5).*log(1.+x);
+	sf = sincfun(f,-0.8,-0.8,0.0,1.0);
+	x = linspace(-0.999,0.999,101);
+	println(norm(g(x)-sf[x])," ",sum(sf)," ",length(sf))
+
+
+	f(x) = 1./(x.^2.+1);
+	sf = sincfun(f,Infinite1);
+	x = linspace(-10.0,10.0,101);
+	println(norm(f(x)-sf[x])," ",sum(sf)," ",length(sf))
 
 
