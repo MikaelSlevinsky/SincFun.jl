@@ -16,7 +16,7 @@ Infinite = Domain(t->sinh(t),t->asinh(t),t->cosh(t))
 SemiInfinite1 = Domain(t->log(exp(t)+1),t->log(exp(t)-1),t->1./(1+exp(-t)))
 SemiInfinite2 = Domain(t->exp(t),t->log(t),t->exp(t))
 
-type sincfun{T<:Number,D<:Domain,F<:Function}
+type sincfun{F<:Function,D<:Domain,T<:Number}
 	n::Integer
 	h::T
 	fphiv::Vector{T}
@@ -25,18 +25,23 @@ type sincfun{T<:Number,D<:Domain,F<:Function}
 	j::Vector{Int64}
 	domain::D
 	ω::F
-	function sincfun{T<:Number,D<:Domain,F<:Function}(f::F,domain::D,TT::Type{T})
-		Tone,Tpi = one(TT),convert(TT,pi)
+	function sincfun{F<:Function,D<:Domain,T<:Number}(f::F,domain::D,::Type{T})
+		Tone,Tpi = one(T),convert(T,pi)
 		ω(t) = exp(-Tpi/2*cosh(t))
-		n=2^8
+		n=2^3
 		h = log(Tpi*Tpi/2*Tone*n/(Tpi/2))/Tone/n
 		jh = h*[-n:n]
 		sinhv,coshv = Tpi/2*sinh(jh),Tpi/2*cosh(jh)
 		fphiv = f(domain.psi(sinhv))
 		phipv = domain.psip(sinhv).*coshv
 		ωv = ω(jh)
-		intold,intnew = Inf,h*dot(fphiv.^2,phipv)
-		while n < 2^16 && abs(intold-intnew) > -log(eps(TT))*intnew*eps(TT)
+		test = abs(fphiv.*phipv)
+		cutoff = !isinf(test).*!isnan(test)
+		fphiv = fphiv[cutoff]
+		phipv = phipv[cutoff]
+		ωv = ωv[cutoff]
+		intold,intnew = Inf,h*dot(fphiv,phipv)
+		while n < 2^14 && abs(intold-intnew) > -log(eps(T)^3)*intnew*eps(T)
 			n *= 2
 			h = log(Tpi*Tpi/2*Tone*n/(Tpi/2))/Tone/n
 			jh = h*[-n:n]
@@ -44,11 +49,16 @@ type sincfun{T<:Number,D<:Domain,F<:Function}
 			fphiv = f(domain.psi(sinhv))
 			phipv = domain.psip(sinhv).*coshv
 			ωv = ω(jh)
-			intold,intnew = intnew,h*dot(fphiv.^2,phipv)
+			test = abs(fphiv.*phipv)
+			cutoff = !isinf(test).*!isnan(test)
+			fphiv = fphiv[cutoff]
+			phipv = phipv[cutoff]
+			ωv = ωv[cutoff]
+			intold,intnew = intnew,h*dot(fphiv,phipv)
 			println(intold," ",intnew," ",n)
 		end
 		j = [-n:n]
-		test=abs(fphiv.*phipv)
+		test = abs(fphiv.*phipv)
 		cutoff = !isinf(test).*!isnan(test)
 		n=length(cutoff[cutoff.==true])
 		println(length(cutoff)," ",length(fphiv))
@@ -56,16 +66,16 @@ type sincfun{T<:Number,D<:Domain,F<:Function}
 		phipv = phipv[cutoff]
 		ωv = ωv[cutoff]
 		j = j[cutoff]
-		println(intnew," ",h*dot(fphiv.^2,phipv)," ",n)
+		println(intnew," ",h*dot(fphiv,phipv)," ",n)
 		new(n,h,fphiv,phipv,ωv,j,domain,ω)
 	end
 end
-sincfun{T<:Number,D<:Domain,F<:Function}(f::F,domain::D,TT::Type{T}) = sincfun{T,D,F}(f,domain,TT)
-sincfun{D<:Domain,F<:Function}(f::F,domain::D) = sincfun{Float64,D,F}(f,domain,Float64)
-sincfun{F<:Function}(f::F) = sincfun{Float64,Domain,F}(f,Finite(0,0,0,0),Float64)
-sincfun{T<:Number,F<:Function}(f::F,TT::Type{T}) = sincfun{T,Domain,F}(f,Finite(0,0,0,0),TT)
+sincfun{F<:Function,D<:Domain,T<:Number}(f::F,domain::D,::Type{T}) = sincfun{F,D,T}(f,domain,T)
+sincfun{F<:Function,D<:Domain}(f::F,domain::D) = sincfun{F,D,Float64}(f,domain,Float64)
+sincfun{F<:Function,T<:Number}(f::F,::Type{T}) = sincfun{F,Domain,T}(f,Finite(0,0,0,0),T)
+sincfun{F<:Function}(f::F) = sincfun{F,Domain,Float64}(f,Finite(0,0,0,0),Float64)
 
-function barycentric{T<:Number,D<:Domain,F<:Function}(sf::sincfun{T,D,F},x::T)
+function barycentric{F<:Function,D<:Domain,T<:Number}(sf::sincfun{F,D,T},x::T)
 	Tpi = convert(T,pi)
 	t = asinh(2/Tpi*sf.domain.psiinv(x))
 
@@ -78,33 +88,33 @@ function barycentric{T<:Number,D<:Domain,F<:Function}(sf::sincfun{T,D,F},x::T)
 		if idx == 0
 			valN = zero(T)
 			valD = zero(T)
-			
+			#=
 			for j=1:length(sf.j)
 				common = (t-sf.j[j]*sf.h)*(-one(T))^(sf.j[j])
 				valN += sf.fphiv[j]*sf.phipv[j]/common
 				valD += sf.ωv[j]/common
 			end
+			=#
 			
-			#=
-			for j=1:2:2sf.n+1
+			for j=1:2:sf.n
 				common = t-sf.j[j]*sf.h
 				valN += sf.fphiv[j]*sf.phipv[j]/common
 				valD += sf.ωv[j]/common
 			end
-			for j=2:2:2sf.n
+			for j=2:2:sf.n
 				common = t-sf.j[j]*sf.h
 				valN -= sf.fphiv[j]*sf.phipv[j]/common
 				valD -= sf.ωv[j]/common
 			end
-			=#
+			
 			return sf.ω(t)/sf.domain.psip(Tpi/2*sinh(t))/(Tpi/2)/cosh(t)*valN/valD
 		else
 			return sf.ω(t)/sf.domain.psip(Tpi/2*sinh(t))/(Tpi/2)/cosh(t)*sf.fphiv[idx]*sf.phipv[idx]/sf.ωv[idx]
 		end
 	end
 end
-Base.getindex{T<:Number,D<:Domain,F<:Function}(sf::sincfun{T,D,F},x::T) = barycentric(sf,x)
-function Base.getindex{T<:Number,D<:Domain,F<:Function}(sf::sincfun{T,D,F},x::Vector{T})
+Base.getindex{F<:Function,D<:Domain,T<:Number}(sf::sincfun{F,D,T},x::T) = barycentric(sf,x)
+function Base.getindex{F<:Function,D<:Domain,T<:Number}(sf::sincfun{F,D,T},x::Vector{T})
 	n = length(x)
 	sfx = zeros(T,n)
 	for i=1:n
