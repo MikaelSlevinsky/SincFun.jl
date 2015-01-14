@@ -1,4 +1,4 @@
-The Sincfun.jl package is licensed under the MIT "Expat" License:
+The SincFun.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2014: Richard Mikael Slevinsky.
 >

@@ -1,129 +1,113 @@
-module Sincfun
+module SincFun
 
 import Base
 
-export sincfun,Domain,Finite,Infinite1,Infinite2,SemiInfinite1,SemiInfinite2
+include("Domains.jl")
 
-type Domain
-	psi::Function
-	psiinv::Function
-	psip::Function
+export sincfun
+
+type sincfun{D,T}
+    n::Integer
+    h::T
+    fϕv::Vector{T}
+    ϕpv::Vector{T}
+    ωv::Vector{T}
+    ωscale::T
+    j::Vector{Int64}
+    domain::D
 end
 
-Finite = Domain(t->tanh(t),t->atanh(t),t->sech(t).^2)
-Infinite1 = Domain(t->sinh(t),t->asinh(t),t->cosh(t))
-Infinite2 = Domain(t->t,t->t,t->0t+1)
-SemiInfinite1 = Domain(t->log(exp(t)+1),t->log(exp(t)-1),t->1./(1+exp(-t)))
-SemiInfinite2 = Domain(t->exp(t),t->log(t),t->exp(t))
 
-#For functions on a Finite domain with algebraic and logarithmic endpoint singularities, use the numbers α, β, γ, and δ to compute the singularities in a stable way.
-type sincfun{F<:Function,D<:Domain,T<:Number}
-	n::Integer
-	h::T
-	fphiv::Vector{T}
-	phipv::Vector{T}
-	ωv::Vector{T}
-	j::Vector{Int64}
-	domain::D
-	α::T
-	β::T
-	γ::T
-	δ::T
-	ω::F
-	function sincfun{F<:Function,D<:Domain,T<:Number}(f::F,domain::D,::Type{T},α::T,β::T,γ::T,δ::T)
-		Tone,Tpi = one(T),convert(T,pi)
-		ω(t) = exp(-Tpi/2*cosh(t))
-		n=2^3
-		h = log(Tpi*Tpi/2*Tone*n/(Tpi/2))/Tone/n
-		jh = h*[-n:n]
-		sinhv,coshv = Tpi/2*sinh(jh),Tpi/2*cosh(jh)
-		fphiv = f(domain.psi(sinhv))
-		phipv = domain.psip(sinhv).*coshv.*(2./(exp(2sinhv).+1)).^α.*(2./(exp(-2sinhv).+1)).^β.*log(2./(exp(2sinhv).+1)).^γ.*log(2./(exp(-2sinhv).+1)).^δ
-		ωv = ω(jh)
-		test = abs(fphiv.*phipv)
-		cutoff = !isinf(test).*!isnan(test)
-		fphiv = fphiv[cutoff]
-		phipv = phipv[cutoff]
-		ωv = ωv[cutoff]
-		intold,intnew = Inf,h*dot(fphiv,phipv)
-		while n < 2^14 && abs(intold-intnew) > -log(eps(T)^3)*abs(intnew)*eps(T)
-			n *= 2
-			h = log(Tpi*Tpi/2*Tone*n/(Tpi/2))/Tone/n
-			jh = h*[-n:n]
-			sinhv,coshv = Tpi/2*sinh(jh),Tpi/2*cosh(jh)
-			fphiv = f(domain.psi(sinhv))
-			phipv = domain.psip(sinhv).*coshv.*(2./(exp(2sinhv).+1)).^α.*(2./(exp(-2sinhv).+1)).^β.*log(2./(exp(2sinhv).+1)).^γ.*log(2./(exp(-2sinhv).+1)).^δ
-			ωv = ω(jh)
-			test = abs(fphiv.*phipv)
-			cutoff = !isinf(test).*!isnan(test)
-			fphiv = fphiv[cutoff]
-			phipv = phipv[cutoff]
-			ωv = ωv[cutoff]
-			intold,intnew = intnew,h*dot(fphiv,phipv)
-		end
-		j=[-n:n]
-		n=length(cutoff[cutoff.==true])
-		j = j[cutoff]
-		new(n,h,fphiv,phipv,ωv,j,domain,α,β,γ,δ,ω)
-	end
+function sincfun{T<:Number}(f::Function,domain::Domain{T})
+    Tπ = convert(T,π)
+    h(n) = log(Tπ*Tπ/2*n/(Tπ/2))/n
+    ω(t) = exp(-Tπ/2*cosh(t))
+
+    n=2^3
+    jh = h(n)*[-n:n]
+    sinhv,coshv = Tπ/2*sinh(jh),Tπ/2*cosh(jh)
+    fϕv = T[f(domain.ψ(z)) for z in sinhv]
+    ϕpv = domain.ψp(sinhv).*coshv
+    ωv = ω(jh)
+    test = abs(fϕv.*ϕpv)
+    cutoff = !isinf(test).*!isnan(test)
+    fϕv = fϕv[cutoff]
+    ϕpv = ϕpv[cutoff]
+    ωscale = maxabs(fϕv.*ϕpv)
+    ωv = ωscale*ωv[cutoff]
+    intold,intnew = Inf,h(n)*dot(fϕv,ϕpv)
+    while n < 2^14 && abs(intold-intnew) > -3log(eps(T))*abs(intnew)*eps(T)
+        n *= 2
+        jh = h(n)*[-n:n]
+        sinhv,coshv = Tπ/2*sinh(jh),Tπ/2*cosh(jh)
+        fϕv = T[f(domain.ψ(z)) for z in sinhv]
+        ϕpv = domain.ψp(sinhv).*coshv
+        ωv = ω(jh)
+        test = abs(fϕv.*ϕpv)
+        cutoff = !isinf(test).*!isnan(test)
+        fϕv = fϕv[cutoff]
+        ϕpv = ϕpv[cutoff]
+        ωscale = maxabs(fϕv.*ϕpv)
+        ωv = ωscale*ωv[cutoff]
+        intold,intnew = intnew,h(n)*dot(fϕv,ϕpv)
+    end
+    j=[-n:n]
+    n=length(cutoff[cutoff.==true])
+    j = j[cutoff]
+    return sincfun{typeof(domain),T}(n,h((n-1)/2),fϕv,ϕpv,ωv,ωscale,j,domain)
 end
-#General Domain constructors
-sincfun{F<:Function,D<:Domain,T<:Number}(f::F,domain::D,::Type{T}) = sincfun{F,D,T}(f,domain,T,zero(T),zero(T),zero(T),zero(T))
-sincfun{F<:Function,D<:Domain}(f::F,domain::D) = sincfun{F,D,Float64}(f,domain,Float64,0.0,0.0,0.0,0.0)
+sincfun(f::Function) = sincfun(f,Finite())
 
-#Finite Domain constructors
-sincfun{F<:Function,T<:Number}(f::F,::Type{T},α::T,β::T,γ::T,δ::T) = sincfun{F,Domain,T}(f,Finite,T,α,β,γ,δ)
-sincfun{F<:Function,T<:Number}(f::F,::Type{T}) = sincfun{F,Domain,T}(f,Finite,T,zero(T),zero(T),zero(T),zero(T))
-sincfun{F<:Function}(f::F,α::Float64,β::Float64,γ::Float64,δ::Float64) = sincfun{F,Domain,Float64}(f,Finite,Float64,α,β,γ,δ)
-sincfun{F<:Function}(f::F) = sincfun{F,Domain,Float64}(f,Finite,Float64,0.0,0.0,0.0,0.0)
+function barycentric{D<:Domain,T<:Number}(sf::sincfun{D,T},x::T)
+    Tπ = convert(T,π)
+    t = asinh(2/Tπ*sf.domain.ψinv(x))
+    ω(t) = exp(-Tπ/2*cosh(t))
 
-function barycentric{F<:Function,D<:Domain,T<:Number}(sf::sincfun{F,D,T},x::T)
-	Tpi = convert(T,pi)
-	t = asinh(2/Tpi*sf.domain.psiinv(x))
-
-	if t < sf.j[1]*sf.h
-		return sf.fphiv[1]
-	elseif t > sf.j[end]*sf.h
-		return sf.fphiv[end]
-	else
-		idx = findfirst(sf.j*sf.h,t)
-		if idx == 0
-			valN = zero(T)
-			valD = zero(T)
-			#=
-			for j=1:length(sf.j)
-				common = (t-sf.j[j]*sf.h)*(-one(T))^(sf.j[j])
-				valN += sf.fphiv[j]*sf.phipv[j]/common
-				valD += sf.ωv[j]/common
-			end
-			=#
-			for j=1:2:sf.n
-				common = t-sf.j[j]*sf.h
-				valN += sf.fphiv[j]*sf.phipv[j]/common
-				valD += sf.ωv[j]/common
-			end
-			for j=2:2:sf.n
-				common = t-sf.j[j]*sf.h
-				valN -= sf.fphiv[j]*sf.phipv[j]/common
-				valD -= sf.ωv[j]/common
-			end
-			return sf.ω(t)/sf.domain.psip(Tpi/2*sinh(t))/(Tpi/2)/cosh(t)*valN/valD
-		else
-			return sf.ω(t)/sf.domain.psip(Tpi/2*sinh(t))/(Tpi/2)/cosh(t)*sf.fphiv[idx]*sf.phipv[idx]/sf.ωv[idx]
-		end
-	end
+    if t < sf.j[1]*sf.h
+        return sf.fϕv[1]
+    elseif t > sf.j[end]*sf.h
+        return sf.fϕv[end]
+    else
+        idx = findfirst(sf.j*sf.h,t)
+        if idx == 0
+            valN = zero(T)
+            valD = zero(T)
+            for j=1:2:sf.n
+                common = t-sf.j[j]*sf.h
+                valN += sf.fϕv[j]*sf.ϕpv[j]/common
+                valD += sf.ωv[j]/common
+            end
+            for j=2:2:sf.n
+                common = t-sf.j[j]*sf.h
+                valN -= sf.fϕv[j]*sf.ϕpv[j]/common
+                valD -= sf.ωv[j]/common
+            end
+            return sf.ωscale*ω(t)/sf.domain.ψp(Tπ/2*sinh(t))/(Tπ/2)/cosh(t)*valN/valD
+        else
+            return sf.ωscale*ω(t)/sf.domain.ψp(Tπ/2*sinh(t))/(Tπ/2)/cosh(t)*sf.fϕv[idx]*sf.ϕpv[idx]/sf.ωv[idx]
+        end
+    end
 end
-Base.getindex{F<:Function,D<:Domain,T<:Number}(sf::sincfun{F,D,T},x::T) = barycentric(sf,x)
-function Base.getindex{F<:Function,D<:Domain,T<:Number}(sf::sincfun{F,D,T},x::Vector{T})
-	n = length(x)
-	sfx = zeros(T,n)
-	for i=1:n
-		sfx[i] = barycentric(sf,x[i])
-	end
-	return sfx
+
+Base.getindex{D<:Domain,T<:Number,T1<:Number}(sf::sincfun{D,T},x::T1) = barycentric(sf,convert(promote_type(T,T1),x))
+function Base.getindex{D<:Finite,T<:Number,T1<:Number}(sf::sincfun{D,T},x::T1)
+    z = sf.domain.ψinv(x)
+    α,β = sf.domain.algebraic
+    γ,δ = sf.domain.logarithmic
+    barycentric(sf,convert(promote_type(T,T1),x))*(2/(exp(2z)+1))^α*(2/(exp(-2z)+1))^β*log(2/(exp(2z)+1))^γ*log(2/(exp(-2z)+1))^δ
 end
+Base.getindex{D<:Domain,T<:Number,T1<:Number}(sf::sincfun{D,T},x::Vector{T1}) = T[sf[x[i]] for i=1:length(x)]
+
 Base.length(sf::sincfun) = sf.n
-Base.sum(sf::sincfun) = sf.h*dot(sf.fphiv,sf.phipv)
+
+Base.sum(sf::sincfun) = sf.h*dot(sf.fϕv,sf.ϕpv)
+function Base.sum{D<:Finite,T<:Number}(sf::sincfun{D,T})
+    Tπ = convert(T,π)
+    sinhv = Tπ/2*sinh(sf.j*sf.h)
+    α,β = sf.domain.algebraic
+    γ,δ = sf.domain.logarithmic
+    sf.h*dot(sf.fϕv,sf.ϕpv.*(2./(exp(2sinhv).+1)).^α.*(2./(exp(-2sinhv).+1)).^β.*log(2./(exp(2sinhv).+1)).^γ.*log(2./(exp(-2sinhv).+1)).^δ)
+end
 
 include("fftBigFloat.jl")
 include("KrylovMethods.jl")
