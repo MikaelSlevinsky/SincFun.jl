@@ -59,6 +59,8 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
 end
 sincfun(f::Function) = sincfun(f,Finite())
 
+## Evaluation by the barycentric formula
+
 function barycentric{D<:Domain,T<:Number}(sf::sincfun{D,T},x::T)
     Tπ = convert(T,π)
     t = asinh(2/Tπ*sf.domain.ψinv(x))
@@ -96,9 +98,54 @@ function Base.getindex{D<:Domain,T<:Number,T1<:Number}(sf::sincfun{D,T},x::T1)
 end
 Base.getindex{D<:Domain,T<:Number,T1<:Number}(sf::sincfun{D,T},x::Vector{T1}) = T[sf[x[i]] for i=1:length(x)]
 
+# Algebra
+
+for op in (:+,:-,:*,:.*)
+    @eval begin
+        function $op{D<:Domain,T<:Number}(sf::sincfun{D,T},c::Number)
+            sf1 = deepcopy(sf)
+            sf1.fϕv = $op(sf.fϕv,convert(T,c))
+            return sf1
+        end
+        function $op{D<:Domain,T<:Number}(c::Number,sf::sincfun{D,T})
+            sf1 = deepcopy(sf)
+            sf1.fϕv = $op(convert(T,c),sf.fϕv)
+            return sf1
+        end
+        function $op{D<:Domain,T<:Number}(sf1::sincfun{D,T},sf2::sincfun{D,T})
+            sincfun(x->$op(sf1[x],sf2[x]),sf1.domain)
+        end
+    end
+end
+
+# real, imag, conj
+
+for op in (:(Base.real),:(Base.imag),:(Base.conj))
+    @eval begin
+        function $op{D<:Domain,T<:Number}(sf::sincfun{D,T})
+            sf1 = deepcopy(sf)
+            sf1.fϕv = $op(sf.fϕv)
+            return sf1
+        end
+    end
+end
+
+# sum, norm, and dot
+
 function Base.sum{D<:Domain,T<:Number}(sf::sincfun{D,T})
     sinhv = convert(T,π)/2*sinh(sf.j*sf.h)
-    sf.h*dot(sf.fϕv,sf.ϕpv.*T[singularities(sf.domain,sinhv[j]) for j=1:length(sinhv)])
+    singv = T[singularities(sf.domain,sinhv[j]) for j=1:length(sinhv)]
+    sf.h*sum(sf.fϕv.*sf.ϕpv.*singv)
+end
+
+function Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T})
+    sinhv = convert(T,π)/2*sinh(sf.j*sf.h)
+    singv = T[singularities(sf.domain,sinhv[j]) for j=1:length(sinhv)]
+    sqrt(abs(sf.h*sum(conj(sf.fϕv.*singv).*sf.fϕv.*singv.*sf.ϕpv)))
+end
+
+function Base.dot{D<:Domain,T<:Number}(sf1::sincfun{D,T},sf2::sincfun{D,T})
+    sum(conj(sf1)*sf2)
 end
 
 Base.length(sf::sincfun) = sf.n

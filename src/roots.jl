@@ -28,7 +28,7 @@ function roots{D<:Finite,T<:Float64}(sf::sincfun{D,T})
     rts = complexroots(sf)
     rts = real(rts[imag(rts) .== zero(T)])
     a,b = sf.domain.ab
-    rts = sort(rts[a + 10eps(T) .< abs(rts) .< b - 10eps(T)])
+    rts = sort(rts[a + 10sf.ωscale*eps(T) .< abs(rts) .< b - 10sf.ωscale*eps(T)])
 end
 
 # This is a first attempt to use Lawrence's O(n^2) algorithm to transform the arrowhead matrix
