@@ -10,7 +10,7 @@ export roots
 function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
     dv = sf.domain.ψ(convert(T,π)/2*sinh(sf.j*sf.h))
     fv,wv = sf.fϕv.*sf.ϕpv,(-one(T)).^(sf.j).*sf.ωv
-    cutoff = abs(fv) .≥ 10eps(T)
+    cutoff = abs(wv) .≥ 10eps(T)
     dv,fv,wv = dv[cutoff],fv[cutoff],wv[cutoff]
     Dm = diagm(dv)
     A = [0.0 -fv';
