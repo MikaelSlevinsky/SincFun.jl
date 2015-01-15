@@ -103,6 +103,7 @@ end
 
 Base.length(sf::sincfun) = sf.n
 
+include("roots.jl")
 include("fftBigFloat.jl")
 include("KrylovMethods.jl")
 include("steig.jl")

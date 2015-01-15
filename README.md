@@ -13,10 +13,12 @@ using SincFun
 We use the sincfun constructor on a function, potentially with the domain and precision specified as well. Without specification, the domain is [-1,1] with double precision.
 
 ```julia
-f(x) = exp(x);
+f(x) = exp(x)*cospi(5x)/(1+x^2);
 sf = sincfun(f);
 x = linspace(-1.0,1.0,101);
 println(norm(f(x)-sf[x])," ",sum(sf)," ",length(sf))
+roots(sf)
+norm(sf[roots(sf)])
 ```
 
 The constructor also allows other domains and precisions and can also incorporate singularities.
