@@ -17,11 +17,12 @@ type sincfun{D,T}
     domain::D
 end
 
+ω{T<:Number}(t::T) = exp(-convert(T,π)/2*cosh(t))
+@vectorize_1arg Number ω
 
 function sincfun{T<:Number}(f::Function,domain::Domain{T})
     Tπ = convert(T,π)
     h(n) = log(Tπ*Tπ/2*n/(Tπ/2))/n
-    ω(t) = exp(-Tπ/2*cosh(t))
 
     n=2^3
     jh = h(n)*[-n:n]
@@ -35,7 +36,7 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
     ϕpv = ϕpv[cutoff]
     ωscale = maxabs(fϕv.*ϕpv)
     ωv = ωscale*ωv[cutoff]
-    intold,intnew = Inf,h(n)*dot(fϕv,ϕpv)
+    intold,intnew = Inf,h(n)*dot(fϕv.^2,ϕpv)
     while n < 2^14 && abs(intold-intnew) > -3log(eps(T))*abs(intnew)*eps(T)
         n *= 2
         jh = h(n)*[-n:n]
@@ -49,7 +50,7 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
         ϕpv = ϕpv[cutoff]
         ωscale = maxabs(fϕv.*ϕpv)
         ωv = ωscale*ωv[cutoff]
-        intold,intnew = intnew,h(n)*dot(fϕv,ϕpv)
+        intold,intnew = intnew,h(n)*dot(fϕv.^2,ϕpv)
     end
     j=[-n:n]
     n=length(cutoff[cutoff.==true])
@@ -61,7 +62,6 @@ sincfun(f::Function) = sincfun(f,Finite())
 function barycentric{D<:Domain,T<:Number}(sf::sincfun{D,T},x::T)
     Tπ = convert(T,π)
     t = asinh(2/Tπ*sf.domain.ψinv(x))
-    ω(t) = exp(-Tπ/2*cosh(t))
 
     if t < sf.j[1]*sf.h
         return sf.fϕv[1]
@@ -89,25 +89,19 @@ function barycentric{D<:Domain,T<:Number}(sf::sincfun{D,T},x::T)
     end
 end
 
-Base.getindex{D<:Domain,T<:Number,T1<:Number}(sf::sincfun{D,T},x::T1) = barycentric(sf,convert(promote_type(T,T1),x))
-function Base.getindex{D<:Finite,T<:Number,T1<:Number}(sf::sincfun{D,T},x::T1)
-    z = sf.domain.ψinv(x)
-    α,β = sf.domain.algebraic
-    γ,δ = sf.domain.logarithmic
-    barycentric(sf,convert(promote_type(T,T1),x))*(2/(exp(2z)+1))^α*(2/(exp(-2z)+1))^β*log(2/(exp(2z)+1))^γ*log(2/(exp(-2z)+1))^δ
+function Base.getindex{D<:Domain,T<:Number,T1<:Number}(sf::sincfun{D,T},x::T1)
+    xc = convert(promote_type(T,T1),x)
+    z = sf.domain.ψinv(xc)
+    barycentric(sf,xc)*singularities(sf.domain,z)
 end
 Base.getindex{D<:Domain,T<:Number,T1<:Number}(sf::sincfun{D,T},x::Vector{T1}) = T[sf[x[i]] for i=1:length(x)]
 
-Base.length(sf::sincfun) = sf.n
-
-Base.sum(sf::sincfun) = sf.h*dot(sf.fϕv,sf.ϕpv)
-function Base.sum{D<:Finite,T<:Number}(sf::sincfun{D,T})
-    Tπ = convert(T,π)
-    sinhv = Tπ/2*sinh(sf.j*sf.h)
-    α,β = sf.domain.algebraic
-    γ,δ = sf.domain.logarithmic
-    sf.h*dot(sf.fϕv,sf.ϕpv.*(2./(exp(2sinhv).+1)).^α.*(2./(exp(-2sinhv).+1)).^β.*log(2./(exp(2sinhv).+1)).^γ.*log(2./(exp(-2sinhv).+1)).^δ)
+function Base.sum{D<:Domain,T<:Number}(sf::sincfun{D,T})
+    sinhv = convert(T,π)/2*sinh(sf.j*sf.h)
+    sf.h*dot(sf.fϕv,sf.ϕpv.*T[singularities(sf.domain,sinhv[j]) for j=1:length(sinhv)])
 end
+
+Base.length(sf::sincfun) = sf.n
 
 include("fftBigFloat.jl")
 include("KrylovMethods.jl")
