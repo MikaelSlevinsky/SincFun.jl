@@ -23,12 +23,12 @@ end
 
 function roots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
     rts = complexroots(sf)
-    rts = real(rts[imag(rts) .== zero(T)])
+    rts = sort(real(rts[imag(rts) .== zero(T)]))
 end
 
 function roots{D<:Finite,T<:Float64}(sf::sincfun{D,T})
     rts = complexroots(sf)
     rts = real(rts[imag(rts) .== zero(T)])
     a,b = sf.domain.ab
-    rts = rts[a + 10eps(T) .< abs(rts) .< b - 10eps(T)]
+    rts = sort(rts[a + 10eps(T) .< abs(rts) .< b - 10eps(T)])
 end
