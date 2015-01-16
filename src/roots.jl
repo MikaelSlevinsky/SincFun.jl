@@ -11,9 +11,7 @@ function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
     wv,xv,fv = (-one(T)).^(sf.j).*sf.ωv, sf.domain.ψ(convert(T,π)/2*sinh(sf.j*sf.h)), sf.fϕv.*sf.ϕpv
     cutoff = abs(wv) .≥ 10eps(T)
     wv,xv,fv = wv[cutoff],xv[cutoff],fv[cutoff]
-    Dm = diagm(xv)
-    A = [0.0 -fv';
-         wv   Dm]
+    A = [zero(T) -fv'; wv diagm(xv)]
     B = diagm([zero(T),ones(T,length(xv))])
     rts,V = eig(A,B)
     rts = rts[abs(rts).<Inf]
@@ -35,48 +33,41 @@ end
 # to upper Hessenberg.
 
 #=
-function complexroots{D<:Domain,T<:Number}(sf::sincfun{D,T})
-    wv,xv,fv = (-one(T)).^(sf.j).*sf.ωv, sf.domain.ψ(convert(T,π)/2*sinh(sf.j*sf.h)), sf.fϕv.*sf.ϕpv
+function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
+    wv,xv,fv = (-one(T)).^(sf.j).*sf.ωv, 1.0sf.j, sf.fϕv.*sf.ϕpv
     cutoff = abs(wv) .≥ 10eps(T)
-    xv,fv,wv = xv[cutoff],fv[cutoff],wv[cutoff]
-
+    wv,xv,fv = wv[cutoff],xv[cutoff],fv[cutoff]
     t,d,c = toupperhessenberg(wv,xv,fv)
-
-    println("Done upperhessenberging.")
-
     A = diagm([zero(T),d])+diagm(t,1)+diagm(t,-1)
     [A[1,i] += c[i] for i=1:length(c)]
-
-    A = convert(Matrix{Float64},A)
-
-    B = eye(T,size(A)...)
-    B[1,1] = 0.0
-    B = convert(Matrix{Float64},B)
+    B = diagm([zero(T),ones(T,length(xv))])
     rts,V = eig(A,B)
     rts = rts[abs(rts).<Inf]
+    rts = sf.domain.ψ(convert(T,π)/2*sinh(sf.h*rts))
 end
 
 function toupperhessenberg{T<:Number}(w::Vector{T},x::Vector{T},f::Vector{T})
     @assert length(w) == length(x) == length(f)
     n = length(w)
-    t,d,c = zeros(T,n),zeros(T,n),zeros(T,n)
+    w,f = w/norm(w),f/norm(f)
+    t,d = zeros(T,n),zeros(T,n)
     q = zeros(T,n,n)
-    q[:,0+1] = w
-    t[0+1] = norm(q[:,0+1])
-    q[:,0+1] /= t[0+1]
-    d[0+1] = dot(q[:,0+1],x.*q[:,0+1])
-    q[:,1+1] = (x-d[0+1]).*q[:,0+1]
-    t[1+1] = norm(q[:,1+1])
-    q[:,1+1] /= t[1+1]
-    for i=1:n-2
-        d[i+1] = dot(q[:,i+1],x.*q[:,i+1])
-        q[:,i+1+1] = (x-d[i+1]).*q[:,i+1]-t[i+1]*q[:,i-1+1]
-        t[i+1+1] = norm(q[:,i+1+1])
-        q[:,i+1+1] /= t[i+1+1]
+    q[:,1] = w
+    t[1] = norm(q[:,1])
+    q[:,1] /= t[1]
+    d[1] = dot(q[:,1],x.*q[:,1])
+    q[:,2] = (x-d[1]).*q[:,1]
+    t[2] = norm(q[:,2])
+    q[:,2] /= t[2]
+    for i=2:n-1
+        d[i] = dot(q[:,i],x.*q[:,i])
+        q[:,i+1] = (x-d[i]).*q[:,i]-t[i]*q[:,i-1]
+        t[i+1] = norm(q[:,i+1])
+        q[:,i+1] /= t[i+1]
     end
     d[n] = dot(q[:,n],x.*q[:,n])
     c = [zero(T), vec(-f'*q)]
-    c[1+1] -= t[0+1]
+    c[2] -= t[1]
     return t,d,c
 end
 =#
