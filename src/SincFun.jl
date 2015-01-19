@@ -50,13 +50,16 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
     sinhv,coshv = sinh(jh)*π/2,cosh(jh)*π/2
     fϕv = interlace([fϕv,T[f(domain.ψ(z)) for z in sinhv]])
     ϕpv = interlace([ϕpv,domain.ψp(sinhv).*coshv])
-    ωv = interlace([ωv,-ω(jh)])
     test = abs(fϕv.*ϕpv)
     cutoff = !(!isinf(test).*!isnan(test))
     fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
     ωscale = maximum(test)
-    j=[-2n:2n]
-    return sincfun{typeof(domain),T}(length(ωv),h(n,T)/2,fϕv,ϕpv,ωscale*ωv,ωscale,j*h(n,T)/2,domain)
+    ωv = ωscale*interlace([ωv,-ω(jh)])
+    #tru = sum(abs(fft(fϕv.*ϕpv))/(n/2) .< ωscale*eps(T))
+    #tru2 = div(tru,2)+1:4n-div(tru,2)+1
+    #fϕv,ϕpv,ωv = fϕv[tru2],ϕpv[tru2],ωv[tru2]
+    #return sincfun{typeof(domain),T}(length(ωv),h(n,T)/2,fϕv,ϕpv,ωv,ωscale,h(n,T)/2*[-2n+div(tru,2):2n-div(tru,2)],domain)
+    return sincfun{typeof(domain),T}(length(ωv),h(n,T)/2,fϕv,ϕpv,ωv,ωscale,h(n,T)/2*[-2n:2n],domain)
 end
 sincfun(f::Function) = sincfun(f,Finite())
 
@@ -130,9 +133,8 @@ for op in (:+,:-,:*,:.*)
             return sf1
         end
         function $op{D<:Domain,T<:Number}(sf1::sincfun{D,T},sf2::sincfun{D,T})
-            sf = deepcopy(sf1)
-            sf.fϕv = $op(sf1.fϕv,sf2.fϕv) # This is incorrect. Was a fix for faster norm.
             #TODO: sf.domain = $op(sf1.domain,sf2.domain)
+            sincfun(x->$op(sf1[x],sf2[x]),sf1.domain)
         end
     end
 end
@@ -171,6 +173,17 @@ function Base.dot{D<:Domain,T<:Number}(sf1::sincfun{D,T},sf2::sincfun{D,T})
     sum(conj(sf1)*sf2)
 end
 Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T}) = sqrt(dot(sf,sf))
+
+function Base.diff{D<:Domain,T<:Number}(sf::sincfun{D,T})
+    SM = Sinc(1,one(T)*[-sf.n+1:sf.n-1])
+    #SM = Sinc(1,one(T)*[-(sf.n-1)/2:(sf.n-1)/2].-[-(sf.n-1)/2:(sf.n-1)/2]')
+    sf1 = deepcopy(sf)
+    temp = sf.fϕv./(sf.h*sf.ϕpv)
+    [sf1.fϕv[i] = sum(SM[i+sf.n-1:-1:i].*temp) for i=1:sf.n]
+    sf1.fϕv .*= sf.ϕpv
+    #sf1.fϕv = SM*temp
+    return sf1
+end
 
 #=
 function Base.diff{D<:Domain,T<:Number}(sf::sincfun{D,T})
