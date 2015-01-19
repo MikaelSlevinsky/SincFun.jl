@@ -44,3 +44,4 @@ function singularities{T<:Number}(domain::Finite{T},z::T)
     γ,δ = domain.logarithmic
     (2/(exp(2z)+1))^α*(2/(exp(-2z)+1))^β*log(2/(exp(2z)+1))^γ*log(2/(exp(-2z)+1))^δ
 end
+singularities{T<:Number}(domain::Domain{T},z::Vector{T}) = T[singularities(domain,zk) for zk in z]

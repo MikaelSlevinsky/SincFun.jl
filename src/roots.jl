@@ -8,16 +8,16 @@
 export roots
 
 function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
-    wv,xv,fv = (-one(T)).^(sf.j).*sf.ωv, sf.domain.ψ(convert(T,π)/2*sinh(sf.j*sf.h)), sf.fϕv.*sf.ϕpv
+    wv,xv,fv = sf.ωv, sf.domain.ψ(convert(T,π)/2*sinh(sf.jh)), sf.fϕv.*sf.ϕpv
     cutoff = abs(wv) .≥ 10eps(T)
     wv,xv,fv = wv[cutoff],xv[cutoff],fv[cutoff]
     n = length(wv)
     wv,fv = wv/norm(wv),fv/norm(fv)
-    A = [zero(T) -fv'; wv diagm(xv)]
+    A = sparse([zero(T) -fv'; wv diagm(xv)])
     s = [one(T),T[abs(fv[i]) == zero(T) ? one(T) : sqrt(abs(wv[i])/abs(fv[i])) for i=1:n]]
     S = sparse([1:n+1],[1:n+1],s)
     B = diagm([zero(T),ones(T,n)])
-    rts,V = eig(S\A*S,B)
+    rts,V = eig(full(S\A*S),B)
     rts = rts[abs(rts).<Inf]
 end
 
@@ -38,7 +38,7 @@ end
 
 #=
 function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
-    wv,xv,fv = (-one(T)).^(sf.j).*sf.ωv, 1.0sf.j, sf.fϕv.*sf.ϕpv
+    wv,xv,fv = sf.ωv, sf.jh, sf.fϕpv
     cutoff = abs(wv) .≥ 10eps(T)
     wv,xv,fv = wv[cutoff],xv[cutoff],fv[cutoff]
     #wvint,xvint,fvint = interlace(wv),interlace(xv),interlace(fv)
@@ -48,7 +48,7 @@ function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
     B = diagm([zero(T),ones(T,length(xv))])
     rts,V = eig(A,B)
     rts = rts[abs(rts).<Inf]
-    rts = sf.domain.ψ(convert(T,π)/2*sinh(sf.h*rts))
+    rts = sf.domain.ψ(convert(T,π)/2*sinh(rts))
 end
 
 function toupperhessenberg{T<:Number}(w::Vector{T},x::Vector{T},f::Vector{T})
@@ -76,20 +76,22 @@ function toupperhessenberg{T<:Number}(w::Vector{T},x::Vector{T},f::Vector{T})
     return t,d,c
 end
 =#
-function interlace{T<:Number}(v::Vector{T})
-    n = length(v)
-    vint = zeros(T,n)
+#=
+function interlace{T<:Number}(u::Vector{T})
+    n = length(u)
+    v = zeros(T,n)
     if isodd(n)
         m = div(n,2) # n = 2m+1
-        vint[1] = v[m+1]
+        v[1] = u[m+1]
         for i = 1:m
-          vint[2i],vint[2i+1] = v[m+i+1],v[m-i+1]
+          v[2i],v[2i+1] = u[m+i+1],u[m-i+1]
         end
     else
         m = div(n,2) # n = 2m
         for i=1:m
-            vint[2i-1],vint[2i] = v[m-i+1],v[m+i]
+            v[2i-1],v[2i] = u[m-i+1],u[m+i]
         end
     end
-    vint
+    v
 end
+=#

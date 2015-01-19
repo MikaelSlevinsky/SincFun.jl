@@ -2,9 +2,23 @@ module SincFun
 
 import Base
 
+Base.eps{T<:Number}(::Type{T}) = eps(real(T))
+Base.real{T<:Real}(::Union(Type{T},Type{Complex{T}})) = T
+
 include("Domains.jl")
 
 export sincfun
+
+#
+# A sincfun represents a function by
+#
+# f(x) = ω(ϕ^{-1}(x))/ϕ'(ϕ^{-1}(x))
+#       * Σ_{j=-n}^{+n} (-1)^j f(ϕ(jh))*ϕ'(jh)/(ϕ^{-1}(x)-jh)
+#       / Σ_{j=-n}^{+n} (-1)^j ω(jh)/(ϕ^{-1}(x)-jh)
+#
+# where ϕ is a double exponential variable transformation
+# and ω is a double exponential weight.
+#
 
 type sincfun{D,T}
     n::Integer
@@ -13,80 +27,56 @@ type sincfun{D,T}
     ϕpv::Vector{T}
     ωv::Vector{T}
     ωscale::T
-    j::Vector{Int64}
+    jh::Vector{T}
     domain::D
 end
 
-ω{T<:Number}(t::T) = exp(-convert(T,π)/2*cosh(t))
-@vectorize_1arg Number ω
-
 function sincfun{T<:Number}(f::Function,domain::Domain{T})
-    Tπ = convert(T,π)
-    h(n) = log(Tπ*Tπ/2*n/(Tπ/2))/n
-
-    n=2^3
-    jh = h(n)*[-n:n]
-    sinhv,coshv = Tπ/2*sinh(jh),Tπ/2*cosh(jh)
-    fϕv = T[f(domain.ψ(z)) for z in sinhv]
-    ϕpv = domain.ψp(sinhv).*coshv
-    ωv = ω(jh)
-    test = abs(fϕv.*ϕpv)
-    cutoff = !isinf(test).*!isnan(test)
-    fϕv = fϕv[cutoff]
-    ϕpv = ϕpv[cutoff]
-    ωscale = maxabs(fϕv.*ϕpv)
-    ωv = ωscale*ωv[cutoff]
-    intold,intnew = Inf,h(n)*dot(fϕv.^2,ϕpv)
-    while n < 2^14 && abs(intold-intnew) > -3log(eps(T))*abs(intnew)*eps(T)
+    n=2^2
+    intold,intnew = Inf,-one(T)
+    while n < 2^14 && abs(intold-intnew) > abs(intnew)*cbrt(eps(T))
         n *= 2
-        jh = h(n)*[-n:n]
-        sinhv,coshv = Tπ/2*sinh(jh),Tπ/2*cosh(jh)
+        jh = h(n,T)*[-n:n]
+        sinhv,coshv = sinh(jh)*π/2,cosh(jh)*π/2
         fϕv = T[f(domain.ψ(z)) for z in sinhv]
         ϕpv = domain.ψp(sinhv).*coshv
-        ωv = ω(jh)
         test = abs(fϕv.*ϕpv)
-        cutoff = !isinf(test).*!isnan(test)
-        fϕv = fϕv[cutoff]
-        ϕpv = ϕpv[cutoff]
-        ωscale = maxabs(fϕv.*ϕpv)
-        ωv = ωscale*ωv[cutoff]
-        intold,intnew = intnew,h(n)*dot(fϕv.^2,ϕpv)
+        cutoff = !(!isinf(test).*!isnan(test))
+        fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
+        intold,intnew = intnew,h(n,T)*sum(fϕv.^2.*ϕpv)
     end
-    j=[-n:n]
-    n=length(cutoff[cutoff.==true])
-    j = j[cutoff]
-    return sincfun{typeof(domain),T}(n,h((n-1)/2),fϕv,ϕpv,ωv,ωscale,j,domain)
+    ωv = ω(jh)
+    jh = h(n,T)*([-n:n-1]+one(T)/2)
+    sinhv,coshv = sinh(jh)*π/2,cosh(jh)*π/2
+    fϕv = interlace([fϕv,T[f(domain.ψ(z)) for z in sinhv]])
+    ϕpv = interlace([ϕpv,domain.ψp(sinhv).*coshv])
+    ωv = interlace([ωv,-ω(jh)])
+    test = abs(fϕv.*ϕpv)
+    cutoff = !(!isinf(test).*!isnan(test))
+    fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
+    ωscale = maximum(test)
+    j=[-2n:2n]
+    return sincfun{typeof(domain),T}(length(ωv),h(n,T)/2,fϕv,ϕpv,ωscale*ωv,ωscale,j*h(n,T)/2,domain)
 end
 sincfun(f::Function) = sincfun(f,Finite())
 
 ## Evaluation by the barycentric formula
 
 function barycentric{D<:Domain,T<:Number}(sf::sincfun{D,T},x::T)
-    Tπ = convert(T,π)
-    t = asinh(2/Tπ*sf.domain.ψinv(x))
-
-    if t < sf.j[1]*sf.h
-        return sf.fϕv[1]
-    elseif t > sf.j[end]*sf.h
-        return sf.fϕv[end]
+    t = asinh(2sf.domain.ψinv(x)/π)
+    if t < sf.jh[1]
+        return envelope(sf,sf.jh[1])*sf.fϕv[1]*sf.ϕpv[1]/sf.ωv[1]
+    elseif t > sf.jh[end]
+        return envelope(sf,sf.jh[end])*sf.fϕv[end]*sf.ϕpv[end]/sf.ωv[end]
     else
-        idx = findfirst(sf.j*sf.h,t)
+        idx = findfirst(sf.jh,t)
         if idx == 0
-            valN = zero(T)
-            valD = zero(T)
-            for j=1:2:sf.n
-                common = t-sf.j[j]*sf.h
-                valN += sf.fϕv[j]*sf.ϕpv[j]/common
-                valD += sf.ωv[j]/common
-            end
-            for j=2:2:sf.n
-                common = t-sf.j[j]*sf.h
-                valN -= sf.fϕv[j]*sf.ϕpv[j]/common
-                valD -= sf.ωv[j]/common
-            end
-            return sf.ωscale*ω(t)/sf.domain.ψp(Tπ/2*sinh(t))/(Tπ/2)/cosh(t)*valN/valD
+            common = t-sf.jh
+            temp = sf.fϕv.*sf.ϕpv./common
+            valN,valD = sum(temp[1:2:end])-sum(temp[2:2:end]),sum(sf.ωv./common)
+            return envelope(sf,t)*valN/valD
         else
-            return sf.ωscale*ω(t)/sf.domain.ψp(Tπ/2*sinh(t))/(Tπ/2)/cosh(t)*sf.fϕv[idx]*sf.ϕpv[idx]/sf.ωv[idx]
+            return envelope(sf,t)*sf.fϕv[idx]*sf.ϕpv[idx]/sf.ωv[idx]
         end
     end
 end
@@ -96,7 +86,34 @@ function Base.getindex{D<:Domain,T<:Number,T1<:Number}(sf::sincfun{D,T},x::T1)
     z = sf.domain.ψinv(xc)
     barycentric(sf,xc)*singularities(sf.domain,z)
 end
-Base.getindex{D<:Domain,T<:Number,T1<:Number}(sf::sincfun{D,T},x::Vector{T1}) = T[sf[x[i]] for i=1:length(x)]
+Base.getindex{D<:Domain,T<:Number,T1<:Number}(sf::sincfun{D,T},x::Vector{T1}) = T[sf[xk] for xk in x]
+
+# Helper routines
+
+ω{T<:Number}(t::T) = exp(-cosh(t)*π/2)
+@vectorize_1arg Number ω
+
+h{T<:Number}(n::Integer,::Type{T}) = log(convert(T,π)*n)/n
+
+envelope{D<:Domain,T<:Number}(sf::sincfun{D,T},t::T) = sf.ωscale*ω(t)/sf.domain.ψp(sinh(t)*π/2)/(cosh(t)*π/2)
+
+function interlace{T<:Number}(u::Vector{T})
+    n = length(u)
+    v = zeros(T,n)
+    if isodd(n)
+        m = div(n,2) # n = 2m+1
+        v[1] = u[1]
+        for i = 1:m
+          v[2i],v[2i+1] = u[i+m+1],u[i+1]
+        end
+    else
+        m = div(n,2) # n = 2m
+        for i=1:m
+            v[2i-1],v[2i] = u[i+m],u[i]
+        end
+    end
+    v
+end
 
 # Algebra
 
@@ -113,7 +130,9 @@ for op in (:+,:-,:*,:.*)
             return sf1
         end
         function $op{D<:Domain,T<:Number}(sf1::sincfun{D,T},sf2::sincfun{D,T})
-            sincfun(x->$op(sf1[x],sf2[x]),sf1.domain)
+            sf = deepcopy(sf1)
+            sf.fϕv = $op(sf1.fϕv,sf2.fϕv)
+            #TODO: sf.domain = $op(sf1.domain,sf2.domain)
         end
     end
 end
@@ -130,23 +149,43 @@ for op in (:(Base.real),:(Base.imag),:(Base.conj))
     end
 end
 
-# sum, norm, and dot
+# sum, cumsum, norm, dot, and diff.
 
 function Base.sum{D<:Domain,T<:Number}(sf::sincfun{D,T})
-    sinhv = convert(T,π)/2*sinh(sf.j*sf.h)
-    singv = T[singularities(sf.domain,sinhv[j]) for j=1:length(sinhv)]
+    sinhv = sinh(sf.jh)*π/2
+    singv = singularities(sf.domain,sinhv)
     sf.h*sum(sf.fϕv.*sf.ϕpv.*singv)
 end
 
-function Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T})
-    sinhv = convert(T,π)/2*sinh(sf.j*sf.h)
-    singv = T[singularities(sf.domain,sinhv[j]) for j=1:length(sinhv)]
-    sqrt(abs(sf.h*sum(conj(sf.fϕv.*singv).*sf.fϕv.*singv.*sf.ϕpv)))
+function Base.cumsum{D<:Domain,T<:Number}(sf::sincfun{D,T})
+    SM = Sinc(-1,one(T)*[-sf.n+1:sf.n-1])
+    #SM = Sinc(-1,one(T)*[-(sf.n-1)/2:(sf.n-1)/2].-[-(sf.n-1)/2:(sf.n-1)/2]')
+    sf1 = deepcopy(sf)
+    temp = sf.h*sf.fϕv.*sf.ϕpv
+    [sf1.fϕv[i] = sum(SM[i+sf.n-1:-1:i].*temp) for i=1:sf.n]
+    #sf1.fϕv = SM*temp
+    return sf1
 end
 
 function Base.dot{D<:Domain,T<:Number}(sf1::sincfun{D,T},sf2::sincfun{D,T})
     sum(conj(sf1)*sf2)
 end
+Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T}) = sqrt(dot(sf,sf))
+
+#=
+function Base.diff{D<:Domain,T<:Number}(sf::sincfun{D,T})
+    SM = Sinc(1,one(T)*[-sf.n:sf.n])
+    sinhv,coshv = convert(T,π)/2*sinh(sf.jh),convert(T,π)/2*cosh(sf.jh)
+    temp = sf.domain.ψp(sinhv).*coshv
+    phippoverphip = sinhv./coshv - 2tanh(sinhv).*coshv
+    sf1 = deepcopy(sf)
+    [sf1.fϕpv[i] = sum(SM[i:i+sf.n-1].*(sf.fϕpv/sf.h)) for i=1:sf.n]
+    sf1.fϕpv = (sf1.fϕpv-sf.fϕpv.*phippoverphip)#./temp
+    #sf1.fϕv = sf1.fϕv./(sf.ϕpv*sf.h)
+    #sf1.ϕpv = ones(T,length(sf.ϕpv))
+    return sf1
+end
+=#
 
 Base.length(sf::sincfun) = sf.n
 
