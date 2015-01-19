@@ -34,7 +34,7 @@ end
 function sincfun{T<:Number}(f::Function,domain::Domain{T})
     n=2^2
     intold,intnew = Inf,-one(T)
-    while n < 2^14 && abs(intold-intnew) > abs(intnew)*cbrt(eps(T))
+    while n < 2^14 && abs(intold-intnew) > abs(intnew)*eps(T)^(1/4)
         n *= 2
         jh = h(n,T)*[-n:n]
         sinhv,coshv = sinh(jh)*π/2,cosh(jh)*π/2
@@ -131,7 +131,7 @@ for op in (:+,:-,:*,:.*)
         end
         function $op{D<:Domain,T<:Number}(sf1::sincfun{D,T},sf2::sincfun{D,T})
             sf = deepcopy(sf1)
-            sf.fϕv = $op(sf1.fϕv,sf2.fϕv)
+            sf.fϕv = $op(sf1.fϕv,sf2.fϕv) # This is incorrect. Was a fix for faster norm.
             #TODO: sf.domain = $op(sf1.domain,sf2.domain)
         end
     end
