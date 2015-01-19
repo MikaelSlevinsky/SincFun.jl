@@ -76,3 +76,4 @@ function toupperhessenberg{T<:Number}(w::Vector{T},x::Vector{T},f::Vector{T})
     return t,d,c
 end
 =#
+# Base.LinAlg.givensAlgorithm(f::T,g::T) returns cs, sn, r
