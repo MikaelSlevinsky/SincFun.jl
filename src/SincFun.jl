@@ -35,7 +35,7 @@ end
 function sincfun{T<:Number}(f::Function,domain::Domain{T})
     n=2^2
     intold,intnew = Inf,-one(T)
-    while n < 2^14 && abs(intold-intnew) > abs(intnew)*eps(T)^(1/4)
+    while n < 2^14 && abs(intold-intnew) > abs(intnew)*eps(T)^(1/3)
         n *= 2
         jh = h(n,T)*[-n:n]
         sinhv,coshv = sinh(jh)*π/2,cosh(jh)*π/2
@@ -54,7 +54,7 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
     cutoff = !(!isinf(test).*!isnan(test))
     fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
     ωscale = maximum(test)
-    tru = div(findfirst(reverse(interlace2(h(n,T)/2*fϕv.^2.*ϕpv)) .> ωscale*eps(T)^2),2)
+    tru = div(findfirst(reverse(interlace2(h(n,T)/2*fϕv.^2.*ϕpv)) .> ωscale*eps(T)^3),2)
     tru -= isodd(tru) ? 1 : 0
     tru2 = tru+1:4n-tru+1
     fϕv,ϕpv = fϕv[tru2],ϕpv[tru2]
