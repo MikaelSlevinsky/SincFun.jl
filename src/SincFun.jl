@@ -53,12 +53,13 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
     test = abs(fϕv.*ϕpv)
     cutoff = !(!isinf(test).*!isnan(test))
     fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
-    tru = div(findfirst(reverse(interlace2(h(n,T)/2*fϕv.^2.*ϕpv)) .> eps(T)^3),2)
+    ωscale = maximum(test)
+    tru = div(findfirst(reverse(interlace2(h(n,T)/2*fϕv.^2.*ϕpv)) .> ωscale*eps(T)^2),2)
     tru2 = tru+1:4n-tru+1
     fϕv,ϕpv = fϕv[tru2],ϕpv[tru2]
     jh = h(n,T)/2*[-2n+tru:2n-tru]
-    ωscale,ωβ = maximum(test),-log(eps(T))/(cosh(jh[end])-one(T))
-    ωv = ωscale*(-one(T)).^([-2n+tru:2n-tru]).*ω(ωβ,jh)
+    ωβ = -log(eps(T))/(cosh(jh[end])-one(T))
+    ωv = isodd(tru)? ωscale*(-one(T)).^([-2n+tru+1:2n-tru+1]).*ω(ωβ,jh) : ωscale*(-one(T)).^([-2n+tru:2n-tru]).*ω(ωβ,jh)
     return sincfun{typeof(domain),T}(length(ωv),h(n,T)/2,fϕv,ϕpv,ωv,ωscale,ωβ,jh,domain)
 end
 sincfun(f::Function) = sincfun(f,Finite())
