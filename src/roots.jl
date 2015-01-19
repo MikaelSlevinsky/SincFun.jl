@@ -41,7 +41,7 @@ function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
     wv,xv,fv = sf.ωv, sf.jh, sf.fϕpv
     cutoff = abs(wv) .≥ 10eps(T)
     wv,xv,fv = wv[cutoff],xv[cutoff],fv[cutoff]
-    #wvint,xvint,fvint = interlace(wv),interlace(xv),interlace(fv)
+    #wvint,xvint,fvint = interlace2(wv),interlace2(xv),interlace2(fv)
     t,d,c = toupperhessenberg(wv,xv,fv)
     A = diagm([zero(T),d])+diagm(t,1)+diagm(t,-1)
     [A[1,i] += c[i] for i=1:length(c)]
@@ -74,24 +74,5 @@ function toupperhessenberg{T<:Number}(w::Vector{T},x::Vector{T},f::Vector{T})
     c = [zero(T), vec(-f'*q)]
     c[2] -= t[1]
     return t,d,c
-end
-=#
-#=
-function interlace{T<:Number}(u::Vector{T})
-    n = length(u)
-    v = zeros(T,n)
-    if isodd(n)
-        m = div(n,2) # n = 2m+1
-        v[1] = u[m+1]
-        for i = 1:m
-          v[2i],v[2i+1] = u[m+i+1],u[m-i+1]
-        end
-    else
-        m = div(n,2) # n = 2m
-        for i=1:m
-            v[2i-1],v[2i] = u[m-i+1],u[m+i]
-        end
-    end
-    v
 end
 =#

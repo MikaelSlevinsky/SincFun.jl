@@ -27,6 +27,7 @@ type sincfun{D,T}
     ϕpv::Vector{T}
     ωv::Vector{T}
     ωscale::T
+    ωβ::T
     jh::Vector{T}
     domain::D
 end
@@ -45,7 +46,6 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
         fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
         intold,intnew = intnew,h(n,T)*sum(fϕv.^2.*ϕpv)
     end
-    ωv = ω(jh)
     jh = h(n,T)*([-n:n-1]+one(T)/2)
     sinhv,coshv = sinh(jh)*π/2,cosh(jh)*π/2
     fϕv = interlace([fϕv,T[f(domain.ψ(z)) for z in sinhv]])
@@ -53,13 +53,13 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
     test = abs(fϕv.*ϕpv)
     cutoff = !(!isinf(test).*!isnan(test))
     fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
-    ωscale = maximum(test)
-    ωv = ωscale*interlace([ωv,-ω(jh)])
-    #tru = sum(abs(fft(fϕv.*ϕpv))/(n/2) .< ωscale*eps(T))
-    #tru2 = div(tru,2)+1:4n-div(tru,2)+1
-    #fϕv,ϕpv,ωv = fϕv[tru2],ϕpv[tru2],ωv[tru2]
-    #return sincfun{typeof(domain),T}(length(ωv),h(n,T)/2,fϕv,ϕpv,ωv,ωscale,h(n,T)/2*[-2n+div(tru,2):2n-div(tru,2)],domain)
-    return sincfun{typeof(domain),T}(length(ωv),h(n,T)/2,fϕv,ϕpv,ωv,ωscale,h(n,T)/2*[-2n:2n],domain)
+    tru = div(findfirst(reverse(interlace2(h(n,T)/2*fϕv.^2.*ϕpv)) .> eps(T)^3),2)
+    tru2 = tru+1:4n-tru+1
+    fϕv,ϕpv = fϕv[tru2],ϕpv[tru2]
+    jh = h(n,T)/2*[-2n+tru:2n-tru]
+    ωscale,ωβ = maximum(test),-log(eps(T))/(cosh(jh[end])-one(T))
+    ωv = ωscale*(-one(T)).^([-2n+tru:2n-tru]).*ω(ωβ,jh)
+    return sincfun{typeof(domain),T}(length(ωv),h(n,T)/2,fϕv,ϕpv,ωv,ωscale,ωβ,jh,domain)
 end
 sincfun(f::Function) = sincfun(f,Finite())
 
@@ -93,12 +93,12 @@ Base.getindex{D<:Domain,T<:Number,T1<:Number}(sf::sincfun{D,T},x::Vector{T1}) = 
 
 # Helper routines
 
-ω{T<:Number}(t::T) = exp(-cosh(t)*π/2)
-@vectorize_1arg Number ω
+ω{T<:Number}(β::T,t::T) = exp(-β*(cosh(t)-one(T)))
+@vectorize_2arg Number ω
 
 h{T<:Number}(n::Integer,::Type{T}) = log(convert(T,π)*n)/n
 
-envelope{D<:Domain,T<:Number}(sf::sincfun{D,T},t::T) = sf.ωscale*ω(t)/sf.domain.ψp(sinh(t)*π/2)/(cosh(t)*π/2)
+envelope{D<:Domain,T<:Number}(sf::sincfun{D,T},t::T) = sf.ωscale*ω(sf.ωβ,t)/sf.domain.ψp(sinh(t)*π/2)/(cosh(t)*π/2)
 
 function interlace{T<:Number}(u::Vector{T})
     n = length(u)
@@ -113,6 +113,24 @@ function interlace{T<:Number}(u::Vector{T})
         m = div(n,2) # n = 2m
         for i=1:m
             v[2i-1],v[2i] = u[i+m],u[i]
+        end
+    end
+    v
+end
+
+function interlace2{T<:Number}(u::Vector{T})
+    n = length(u)
+    v = zeros(T,n)
+    if isodd(n)
+        m = div(n,2) # n = 2m+1
+        v[1] = u[m+1]
+        for i = 1:m
+          v[2i],v[2i+1] = u[m+i+1],u[m-i+1]
+        end
+    else
+        m = div(n,2) # n = 2m
+        for i=1:m
+            v[2i-1],v[2i] = u[m-i+1],u[m+i]
         end
     end
     v
@@ -172,8 +190,14 @@ end
 function Base.dot{D<:Domain,T<:Number}(sf1::sincfun{D,T},sf2::sincfun{D,T})
     sum(conj(sf1)*sf2)
 end
-Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T}) = sqrt(dot(sf,sf))
 
+function Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T})
+    sinhv = sinh(sf.jh)*π/2
+    singv = singularities(sf.domain,sinhv)
+    sqrt(abs(sf.h*sum((sf.fϕv.*singv).^2.*sf.ϕpv)))
+end
+
+#=
 function Base.diff{D<:Domain,T<:Number}(sf::sincfun{D,T})
     SM = Sinc(1,one(T)*[-sf.n+1:sf.n-1])
     #SM = Sinc(1,one(T)*[-(sf.n-1)/2:(sf.n-1)/2].-[-(sf.n-1)/2:(sf.n-1)/2]')
@@ -184,7 +208,7 @@ function Base.diff{D<:Domain,T<:Number}(sf::sincfun{D,T})
     #sf1.fϕv = SM*temp
     return sf1
 end
-
+=#
 #=
 function Base.diff{D<:Domain,T<:Number}(sf::sincfun{D,T})
     SM = Sinc(1,one(T)*[-sf.n:sf.n])
