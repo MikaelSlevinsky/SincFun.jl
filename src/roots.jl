@@ -8,7 +8,7 @@
 export roots
 
 function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
-    wv,xv,fv = sf.ωv, sf.domain.ψ(convert(T,π)/2*sinh(sf.jh)), sf.fϕv.*sf.ϕpv
+    wv,xv,fv = (-one(T)).^([0:sf.n-1]).*sf.ωv, sf.domain.ψ(convert(T,π)/2*sinh(sf.jh)), sf.fϕv.*sf.ϕpv
     cutoff = abs(wv) .≥ 10eps(T)
     wv,xv,fv = wv[cutoff],xv[cutoff],fv[cutoff]
     n = length(wv)
@@ -38,7 +38,7 @@ end
 
 #=
 function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
-    wv,xv,fv = sf.ωv, sf.jh, sf.fϕpv
+    wv,xv,fv = (-one(T)).^([0:sf.n-1]).*sf.ωv, sf.jh, sf.fϕpv
     cutoff = abs(wv) .≥ 10eps(T)
     wv,xv,fv = wv[cutoff],xv[cutoff],fv[cutoff]
     #wvint,xvint,fvint = interlace2(wv),interlace2(xv),interlace2(fv)

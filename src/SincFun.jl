@@ -55,13 +55,10 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
     fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
     ωscale = maximum(test)
     tru = div(findfirst(reverse(interlace2(h(n,T)/2*fϕv.^2.*ϕpv)) .> ωscale*eps(T)^3),2)
-    tru -= isodd(tru) ? 1 : 0
-    tru2 = tru+1:4n-tru+1
-    fϕv,ϕpv = fϕv[tru2],ϕpv[tru2]
-    jh = h(n,T)/2*[-2n+tru:2n-tru]
+    fϕv,ϕpv,jh = fϕv[tru+1:4n-tru+1],ϕpv[tru+1:4n-tru+1],h(n,T)/2*[-2n+tru:2n-tru]
     ωβ = -2log(eps(T))/(cosh(jh[end])-one(T))
-    ωv = ωscale*(-one(T)).^([-2n+tru:2n-tru]).*ω(ωβ,jh)
-    return sincfun{typeof(domain),T}(length(ωv),h(n,T)/2,fϕv,ϕpv,ωv,ωscale,ωβ,jh,domain)
+    ωv = ωscale*ω(ωβ,jh)
+    return sincfun{typeof(domain),T}(length(fϕv),h(n,T)/2,fϕv,ϕpv,ωv,ωscale,ωβ,jh,domain)
 end
 sincfun(f::Function) = sincfun(f,Finite())
 
@@ -77,8 +74,8 @@ function barycentric{D<:Domain,T<:Number}(sf::sincfun{D,T},x::T)
         idx = findfirst(sf.jh,t)
         if idx == 0
             common = t-sf.jh
-            temp = sf.fϕv.*sf.ϕpv./common
-            valN,valD = sum(temp[1:2:end])-sum(temp[2:2:end]),sum(sf.ωv./common)
+            num,den = sf.fϕv.*sf.ϕpv./common,sf.ωv./common
+            valN,valD = sum(num[1:2:end])-sum(num[2:2:end]),sum(den[1:2:end])-sum(den[2:2:end])
             return envelope(sf,t)*valN/valD
         else
             return envelope(sf,t)*sf.fϕv[idx]*sf.ϕpv[idx]/sf.ωv[idx]
