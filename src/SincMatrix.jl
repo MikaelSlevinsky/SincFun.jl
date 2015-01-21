@@ -29,8 +29,8 @@ end
 SincMatrix{T}(D::Matrix{T},TM::Vector{T}) = SincMatrix(D,reshape(TM,length(TM),1))
 SincMatrix{T}(D::Vector{T},TM::Matrix{T}) = SincMatrix(reshape(D,length(D),1),TM)
 SincMatrix{T}(D::Vector{T},TM::Vector{T}) = SincMatrix(reshape(D,length(D),1),reshape(TM,length(TM),1))
-SincMatrix{T}(TM::Matrix{T}) = SincMatrix(ones(T,div(size(TM)[1]+1,2),size(TM)[2]),TM)
 SincMatrix{T}(TM::Vector{T}) = SincMatrix(ones(T,div(size(TM)[1]+1,2),1),reshape(TM,length(TM),1))
+SincMatrix{T}(TM::Matrix{T}) = SincMatrix(vec(sum(TM,2)))
 
 
 Base.ndims(A::SincMatrix) = 2
