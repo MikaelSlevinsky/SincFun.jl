@@ -41,9 +41,13 @@ sf = sincfun(f,Finite(big(-1.0),big(1.0),BigFloat("-0.8"),BigFloat("-0.8"),big(0
 x = linspace(BigFloat("-0.999"),BigFloat("0.999"),101);
 println(norm(g(x)-sf[x])," ",sum(sf)," ",length(sf))
 ```
+
+There is also preliminary support for the Hilbert transform:
+
 ```julia
-f(x) = 1./(x.^2.+1);
-sf = sincfun(f,Infinite1(BigFloat));
-x = linspace(big(-10.0),big(10.0),101);
-println(norm(f(x)-sf[x])," ",sum(sf)," ",length(sf))
+sf = sincfun(x->x/(x^2+1)^2,Infinite1());
+sg = sincfun(x->(1-x^2)/2/(x^2+1)^2,Infinite1());
+sh=hilbert(sf);
+x = linspace(-5.0,5.0,1001);
+println(norm(sg[x]-sh[x]))
 ```

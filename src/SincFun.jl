@@ -7,7 +7,7 @@ Base.real{T<:Real}(::Union(Type{T},Type{Complex{T}})) = T
 
 include("Domains.jl")
 
-export sincfun
+export sincfun, hilbert
 
 #
 # A sincfun represents a function by
@@ -178,7 +178,7 @@ end
 
 function Base.cumsum{D<:Domain,T<:Number}(sf::sincfun{D,T})
     SM = Sinc(-1,one(T)*[-sf.n+1:sf.n-1])
-    #SM = Sinc(-1,one(T)*[-(sf.n-1)/2:(sf.n-1)/2].-[-(sf.n-1)/2:(sf.n-1)/2]')
+    #SM = Sinc(-1,one(T)/sf.h*(sf.jh.-sf.jh'))
     sf1 = deepcopy(sf)
     temp = sf.h*sf.fϕv.*sf.ϕpv
     [sf1.fϕv[i] = sum(SM[i+sf.n-1:-1:i].*temp) for i=1:sf.n]
@@ -194,6 +194,15 @@ function Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T})
     sinhv = sinh(sf.jh)*π/2
     singv = singularities(sf.domain,sinhv)
     sqrt(abs(sf.h*sum((sf.fϕv.*singv).^2.*sf.ϕpv)))
+end
+
+function hilbert{D<:Domain,T<:Number}(sf::sincfun{D,T})
+    SM = (Sinc(0,one(T)/2/sf.h*(sf.jh.-sf.jh')).*(sf.jh.-sf.jh')).^2./(sf.domain.ψ(sinh(sf.jh)*π/2).-sf.domain.ψ(sinh(sf.jh)*π/2)')
+    [SM[i,i] = zero(T) for i=1:sf.n]
+    sf1 = deepcopy(sf)
+    temp = -sf.fϕv.*sf.ϕpv*π/2/sf.h
+    sf1.fϕv = SM*temp
+    return sf1
 end
 
 #=
