@@ -167,10 +167,12 @@ end
 Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T}) = norm(sf,2)
 
 function hilbert{D<:Domain,T<:Number}(sf::sincfun{D,T})
-    SM = (Sinc(0,one(T)/2/sf.h*(sf.jh.-sf.jh')).*(sf.jh.-sf.jh')).^2./(sf.domain.ψ(sinh(sf.jh)*π/2).-sf.domain.ψ(sinh(sf.jh)*π/2)')
+    sinhv = sinh(sf.jh)*π/2
+    SM = (Sinc(0,one(T)/2/sf.h*(sf.jh.-sf.jh')).*(sf.jh.-sf.jh')).^2./(sf.domain.ψ(sinhv).-sf.domain.ψ(sinhv)')
     [SM[i,i] = zero(T) for i=1:sf.n]
     sf1 = deepcopy(sf)
-    temp = -sf.fϕv.*sf.ϕpv*π/2/sf.h
+    singv = singularities(sf.domain,sinhv)
+    temp = -sf.fϕv.*sf.ϕpv.*singv*π/2/sf.h
     sf1.fϕv = SM*temp
     return sf1
 end
