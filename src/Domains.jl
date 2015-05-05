@@ -33,15 +33,20 @@ end
 
 Infinite1{T}(::Type{T}) = Infinite1{T}(sinh,asinh,cosh)
 Infinite2{T}(::Type{T}) = Infinite2{T}(identity,identity,t->0t+1)
-SemiInfinite1{T}(::Type{T}) = SemiInfinite1{T}(t->log(exp(t)+1),t->log(exp(t)-1),t->1./(1+exp(-t)))
+SemiInfinite1{T}(::Type{T}) = SemiInfinite1{T}(t->log1p(exp(t)),t->log(expm1(t)),t->1./(1+exp(-t)))
 SemiInfinite2{T}(::Type{T}) = SemiInfinite2{T}(exp,log,exp)
 
 # singularities is a function that should have an override for every domain that has endpoint singularities.
 
-singularities{T<:Number}(domain::Domain{T},z::T) = one(T)
-function singularities{T<:Number}(domain::Finite{T},z::T)
+singularities{S<:Number,T<:Number}(domain::Domain{S},z::T) = one(promote_type(S,T))
+singularities{S<:Number,T<:Number}(domain::Domain{S},z::Vector{T}) = promote_type(S,T)[singularities(domain,zk) for zk in z]
+singularities{S<:Number,T<:Number,N}(domain::Domain{S},z::Array{T,N}) = reshape(singularities(domain,vec(z)),size(z))
+
+function singularities{S<:Number,T<:Number}(domain::Finite{S},z::T)
     α,β = domain.algebraic
     γ,δ = domain.logarithmic
-    (2/(exp(2z)+1))^α*(2/(exp(-2z)+1))^β*log(2/(exp(2z)+1))^γ*log(2/(exp(-2z)+1))^δ
+    #(2/(exp(-2z)+1))^α*(2/(exp(2z)+1))^β*log(2/(exp(-2z)+1))^γ*log(2/(exp(2z)+1))^δ
+    exp2z = exp(2z)
+    temp1,temp2 = 2/(1/exp2z+1),2/(exp2z+1)
+    (temp1)^α*(temp2)^β*log(temp1)^γ*log(temp2)^δ
 end
-singularities{T<:Number}(domain::Domain{T},z::Vector{T}) = T[singularities(domain,zk) for zk in z]
