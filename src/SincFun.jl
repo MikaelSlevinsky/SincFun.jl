@@ -209,6 +209,7 @@ include("fftBigFloat.jl")
 include("KrylovMethods.jl")
 include("steig.jl")
 include("Sinc.jl")
+include("ConformalMap.jl")
 include("SincMatrix.jl")
 include("BandMatrix.jl")
 
