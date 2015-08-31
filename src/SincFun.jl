@@ -151,7 +151,7 @@ end
 Base.dot{D<:Domain,T<:Number}(sf1::sincfun{D,T},sf2::sincfun{D,T}) = sum(conj(sf1)*sf2)
 
 function Base.cumsum{D<:Domain,T<:Number}(sf::sincfun{D,T})
-    SM = Sinc(-1,one(T)*[-sf.n+1:sf.n-1])
+    SM = sinc(-1,one(T)*[-sf.n+1:sf.n-1])
     sf1 = deepcopy(sf)
     temp = sf.h*sf.fϕv.*sf.ϕpv
     [sf1.fϕv[i] = sum(SM[i+sf.n-1:-1:i].*temp) for i=1:sf.n]
@@ -168,7 +168,7 @@ Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T}) = norm(sf,2)
 
 function hilbert{D<:Domain,T<:Number}(sf::sincfun{D,T})
     sinhv = sinh(sf.jh)*π/2
-    SM = (Sinc(0,one(T)/2/sf.h*(sf.jh.-sf.jh')).*(sf.jh.-sf.jh')).^2./(sf.domain.ψ(sinhv).-sf.domain.ψ(sinhv)')
+    SM = (sinc(0,one(T)/2/sf.h*(sf.jh.-sf.jh')).*(sf.jh.-sf.jh')).^2./(sf.domain.ψ(sinhv).-sf.domain.ψ(sinhv)')
     [SM[i,i] = zero(T) for i=1:sf.n]
     sf1 = deepcopy(sf)
     singv = singularities(sf.domain,sinhv)
@@ -179,8 +179,8 @@ end
 
 #=
 function Base.diff{D<:Domain,T<:Number}(sf::sincfun{D,T})
-    SM = Sinc(1,one(T)*[-sf.n+1:sf.n-1])
-    #SM = Sinc(1,one(T)*[-(sf.n-1)/2:(sf.n-1)/2].-[-(sf.n-1)/2:(sf.n-1)/2]')
+    SM = sinc(1,one(T)*[-sf.n+1:sf.n-1])
+    #SM = sinc(1,one(T)*[-(sf.n-1)/2:(sf.n-1)/2].-[-(sf.n-1)/2:(sf.n-1)/2]')
     sf1 = deepcopy(sf)
     temp = sf.fϕv./(sf.h*sf.ϕpv)
     [sf1.fϕv[i] = sum(SM[i+sf.n-1:-1:i].*temp) for i=1:sf.n]
@@ -191,7 +191,7 @@ end
 =#
 #=
 function Base.diff{D<:Domain,T<:Number}(sf::sincfun{D,T})
-    SM = Sinc(1,one(T)*[-sf.n:sf.n])
+    SM = sinc(1,one(T)*[-sf.n:sf.n])
     sinhv,coshv = convert(T,π)/2*sinh(sf.jh),convert(T,π)/2*cosh(sf.jh)
     temp = sf.domain.ψp(sinhv).*coshv
     phippoverphip = sinhv./coshv - 2tanh(sinhv).*coshv
