@@ -32,6 +32,8 @@ function differentiate{T}(h::ConformalMap{T})
 end
 differentiate{T}(h::ConformalMap{T},n::Int) = n > 1 ? differentiate(differentiate(h),n-1) : n == 1 ? differentiate(h) : n == 0 ? h : throw("Cannot differentiate with order "*string(n)*".")
 
+Base.transpose{T}(h::ConformalMap{T}) = differentiate(h)
+
 function evaluate{T}(h::ConformalMap{T},t::Number)
     n = length(h.u)
     ret = n > 0 ? convert(promote_type(T,typeof(t)),h.u[n]) : zero(promote_type(T,typeof(t)))

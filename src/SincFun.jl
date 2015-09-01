@@ -35,8 +35,8 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
         n *= 2
         jh = h(T,n)*[-n:n]
         sinhv,coshv = sinh(jh)*π/2,cosh(jh)*π/2
-        fϕv = T[f(domain.ψ(z)) for z in sinhv]
-        ϕpv = domain.ψp(sinhv).*coshv
+        fϕv = T[f(ψ(domain,z)) for z in sinhv]
+        ϕpv = ψp(domain,sinhv).*coshv
         test = abs(fϕv.*ϕpv)
         cutoff = !(!isinf(test).*!isnan(test))
         fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
@@ -44,8 +44,8 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
     end
     jh = h(T,n)*([-n:n-1]+one(T)/2)
     sinhv,coshv = sinh(jh)*π/2,cosh(jh)*π/2
-    fϕv = interlace([fϕv,T[f(domain.ψ(z)) for z in sinhv]])
-    ϕpv = interlace([ϕpv,domain.ψp(sinhv).*coshv])
+    fϕv = interlace([fϕv,T[f(ψ(domain,z)) for z in sinhv]])
+    ϕpv = interlace([ϕpv,ψp(domain,sinhv).*coshv])
     test = abs(fϕv.*ϕpv)
     cutoff = !(!isinf(test).*!isnan(test))
     fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
@@ -67,7 +67,7 @@ domain(sf::sincfun) = sf.domain
 
 function Base.getindex{D<:Domain,S<:Number,T<:Number}(sf::sincfun{D,S},x::T)
     xc = convert(promote_type(S,T),x)
-    z = sf.domain.ψinv(xc)
+    z = ψinv(sf.domain,xc)
     barycentric(sf,xc)*singularities(sf.domain,z)
 end
 Base.getindex{D<:Domain,S<:Number,T<:Number}(sf::sincfun{D,S},x::Vector{T}) = promote_type(S,T)[sf[xk] for xk in x]
@@ -75,7 +75,7 @@ Base.getindex{D<:Domain,S<:Number,T<:Number,N}(sf::sincfun{D,S},x::Array{T,N}) =
 
 
 function barycentric{D<:Domain,T<:Number}(sf::sincfun{D,T},x::T)
-    t = asinh(2sf.domain.ψinv(x)/π)
+    t = asinh(2ψinv(sf.domain,x)/π)
     if t < sf.jh[1]
         return envelope(sf,sf.jh[1])*sf.fϕv[1]*sf.ϕpv[1]/sf.ωv[1]
     elseif t > sf.jh[end]
@@ -92,7 +92,7 @@ function barycentric{D<:Domain,T<:Number}(sf::sincfun{D,T},x::T)
         end
     end
 end
-envelope{D<:Domain,T<:Number}(sf::sincfun{D,T},t::T) = sf.ωscale*ω(sf.ωβ,t)/sf.domain.ψp(sinh(t)*π/2)/(cosh(t)*π/2)
+envelope{D<:Domain,T<:Number}(sf::sincfun{D,T},t::T) = sf.ωscale*ω(sf.ωβ,t)/ψp(sf.domain,sinh(t)*π/2)/(cosh(t)*π/2)
 
 
 
@@ -168,7 +168,7 @@ Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T}) = norm(sf,2)
 
 function hilbert{D<:Domain,T<:Number}(sf::sincfun{D,T})
     sinhv = sinh(sf.jh)*π/2
-    SM = (sinc(0,one(T)/2/sf.h*(sf.jh.-sf.jh')).*(sf.jh.-sf.jh')).^2./(sf.domain.ψ(sinhv).-sf.domain.ψ(sinhv)')
+    SM = (sinc(0,one(T)/2/sf.h*(sf.jh.-sf.jh')).*(sf.jh.-sf.jh')).^2./(ψ(sf.domain,sinhv).-ψ(sf.domain,sinhv)')
     [SM[i,i] = zero(T) for i=1:sf.n]
     sf1 = deepcopy(sf)
     singv = singularities(sf.domain,sinhv)
@@ -193,7 +193,7 @@ end
 function Base.diff{D<:Domain,T<:Number}(sf::sincfun{D,T})
     SM = sinc(1,one(T)*[-sf.n:sf.n])
     sinhv,coshv = convert(T,π)/2*sinh(sf.jh),convert(T,π)/2*cosh(sf.jh)
-    temp = sf.domain.ψp(sinhv).*coshv
+    temp = ψp(sf.domain,sinhv).*coshv
     phippoverphip = sinhv./coshv - 2tanh(sinhv).*coshv
     sf1 = deepcopy(sf)
     [sf1.fϕpv[i] = sum(SM[i:i+sf.n-1].*(sf.fϕpv/sf.h)) for i=1:sf.n]
