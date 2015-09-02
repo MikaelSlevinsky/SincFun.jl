@@ -29,4 +29,7 @@ println("Time for 10 roots should be <0.80 seconds.")
 
 h = ConformalMap(1.0,0.1.^(1:4))
 
-@time norm(h[inv(h,x)]-x) < 10eps()
+@test norm(h[inv(h,x)]-x) < 10eps()
+
+println("Time for 101 samples and inverses of a ConformalMap should be < 0.0002 seconds.")
+@time h[inv(h,x)]
