@@ -34,6 +34,17 @@ differentiate{T}(h::ConformalMap{T},n::Int) = n > 1 ? differentiate(differentiat
 
 Base.transpose{T}(h::ConformalMap{T}) = differentiate(h)
 
+function Base.inv{T}(h::ConformalMap{T},x)
+    hp = h'
+    t0 = Inf*x
+    t1 = asinh((x-h.u[1])./h.u0)
+    while norm(t1./t0-1,Inf) > 10eps(T)
+        t0 = t1
+        t1 = t0 - (h[t0]-x)./hp[t0]
+    end
+    return t1
+end
+
 function evaluate{T}(h::ConformalMap{T},t::Number)
     n = length(h.u)
     ret = n > 0 ? convert(promote_type(T,typeof(t)),h.u[n]) : zero(promote_type(T,typeof(t)))

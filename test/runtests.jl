@@ -26,3 +26,7 @@ sfc = sincfun(x->cospi(5x))
 println("Time for 10 roots should be <0.80 seconds.")
 @time roots(sfc)
 
+
+h = ConformalMap(1.0,0.1.^(1:4))
+
+@time norm(h[inv(h,x)]-x) < 10eps()
