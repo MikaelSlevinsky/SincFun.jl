@@ -9,6 +9,7 @@ type Finite{T} <: Domain{T}
     ab::Vector{T} # endpoints of the interval
     algebraic::Vector{T} # exponents of the algebraic singularities of the endpoints
     logarithmic::Vector{T} # exponents of the logarithmic singularities of the endpoints
+    Finite(ab::Vector{T},algebraic::Vector{T},logarithmic::Vector{T}) = new(ab,algebraic,logarithmic)
 end
 Finite{T}(a::T,b::T,α::T,β::T,γ::T,δ::T) = Finite{T}([a,b],[α,β],[γ,δ]) # Algebraic and logarithmic endpoint singularities
 Finite{T}(a::T,b::T,α::T,β::T) = Finite(a,b,α,β,zero(T),zero(T)) # Only algebraic endpoint singularities
