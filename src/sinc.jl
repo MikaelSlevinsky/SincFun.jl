@@ -1,4 +1,4 @@
-export sinint,cosint,sinc
+export sinint,cosint
 
 import Base.Math: @horner
 
@@ -221,7 +221,7 @@ function cosint(x::Float64)
 end
 @vectorize_1arg Float64 cosint
 
-function sinc{T<:Number}(n::Integer,x::T)
+function Base.sinc{T<:Number}(n::Integer,x::T)
 #This program computes the nth sinc differentiation matrices.
     val = zero(T)
     Tπ = convert(T,π)
@@ -247,5 +247,5 @@ function sinc{T<:Number}(n::Integer,x::T)
     end
     return val
 end
-sinc{T<:Number}(n::T,x::T) = sinc(int(n),x)
-@vectorize_2arg Number sinc
+Base.sinc{T<:Number}(n::T,x::T) = sinc(int(n),x)
+@vectorize_2arg Number Base.sinc
