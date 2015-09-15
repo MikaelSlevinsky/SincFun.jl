@@ -8,15 +8,15 @@
 export roots
 
 function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
-    wv,xv,fv = (-one(T)).^([0:sf.n-1]).*sf.ωv, ψ(sf.domain,convert(T,π)/2*sinh(sf.jh)), sf.fϕv.*sf.ϕpv
+    wv,xv,fv = (-one(T)).^(collect(0:sf.n-1)).*sf.ωv, ψ(sf.domain,convert(T,π)/2*sinh(sf.jh)), sf.fϕv.*sf.ϕpv
     cutoff = abs(wv) .≥ 10eps(T)
     wv,xv,fv = wv[cutoff],xv[cutoff],fv[cutoff]
     n = length(wv)
     wv,fv = wv/norm(wv),fv/norm(fv)
     A = sparse([zero(T) -fv'; wv diagm(xv)])
-    s = [one(T),T[abs(fv[i]) == zero(T) ? one(T) : sqrt(abs(wv[i])/abs(fv[i])) for i=1:n]]
-    S = sparse([1:n+1],[1:n+1],s)
-    B = diagm([zero(T),ones(T,n)])
+    s = [one(T);T[abs(fv[i]) == zero(T) ? one(T) : sqrt(abs(wv[i])/abs(fv[i])) for i=1:n]]
+    S = sparse(collect(1:n+1),collect(1:n+1),s)
+    B = diagm([zero(T);ones(T,n)])
     rts,V = eig(full(S\A*S),B)
     rts = rts[abs(rts).<Inf]
 end

@@ -10,8 +10,8 @@ eps{T<:Real}(::Type{Complex{T}}) = eps(real(T))
 #
 # This function provides a convenient way to query or specify the BigFloat precision.
 #
-digits(n::Int) = set_bigfloat_precision(int(ceil(n*log2(10))))
-digits() = int(floor(get_bigfloat_precision()*log10(2)))
+digits(n::Int) = set_bigfloat_precision(round(Int,ceil(n*log2(10))))
+digits() = round(Int,floor(get_bigfloat_precision()*log10(2)))
 
 
 h{T<:Number}(::Type{T},n::Int) = log(convert(T,π)*n)/n
