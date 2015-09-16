@@ -7,6 +7,7 @@ This package is a work in progress with the goal of implementing fast algorithms
 The basic usage of the package is like so:
 
 ```julia
+Pkg.clone("https://github.com/MikaelSlevinsky/SincFun.jl.git")
 using SincFun
 ```
 
