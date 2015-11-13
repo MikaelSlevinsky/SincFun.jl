@@ -95,7 +95,7 @@ function sinint(x::Float64)
     end
 end
 
-function sinint{T<:Number}(z::T;n::Integer=2^6)
+function sinint{T<:AbstractFloat}(z::T;n::Integer=2^6)
     Tπ=convert(T,π);dDE=Tπ/2;ga=one(T);b2=one(T);h=log(Tπ*dDE*ga*n/b2)/ga/n
     phi(t::T) = log(exp(Tπ/2*sinh(t))+one(T))
     phip(t::T) = Tπ/2*cosh(t)/(one(T)+exp(-Tπ/2*sinh(t)))
@@ -224,28 +224,30 @@ end
 function Base.sinc{T<:Number}(n::Integer,x::T)
 #This program computes the nth sinc differentiation matrices.
     val = zero(T)
-    Tπ = convert(T,π)
     if n ≥ 0
-        if x == zero(T)
-            val = isodd(n) ? zero(T) : (-1)^(n/2)*Tπ^n/(n+one(T))
+        if x == 0
+            val = isodd(n) ? zero(T) : (-1)^(n/2)*convert(T,π)^n/(n+1)
         else
-            sp,cp = sinpi(x+one(T)),cospi(x+one(T))
-            Tπx = Tπ*x
-            gvec = ones(T,n+3)
-            for k=0:2:n
-                val += sp*(-1)^(k/2)*(Tπx)^k/gvec[k+1]
-                gvec[k+2] = (k+1)*gvec[k+1]
-                gvec[k+3] = (k+2)*gvec[k+2]
+            sp,cp,πk,xk,den = sinpi(x),cospi(x),one(T),one(T),1
+            for k=0:n
+                m = mod(k,4)
+                if m == 0
+                    val -= sp*πk*xk/den
+                elseif m == 1
+                    val += cp*πk*xk/den
+                elseif m == 2
+                    val += sp*πk*xk/den
+                else
+                    val -= cp*πk*xk/den
+                end
+                πk,xk,den = πk*π,xk*x,den*(k+1)
             end
-            for k=1:2:n
-                val += cp*(-1)^((k+1)/2)*(Tπx)^k/gvec[k+1]
-            end
-            val *= gvec[n+1]/(-x)^(n+1)/Tπ
+            val *= iseven(n) ? -den/(n+1)/(π*xk) : den/(n+1)/(π*xk)
         end
     elseif n == -1
         val = 0.5+sinint(π*x)/π
     end
     return val
 end
-Base.sinc{T<:Number}(n::T,x::T) = sinc(int(n),x)
+Base.sinc{T<:Number}(n::T,x::T) = sinc(rount(Int,n),x)
 @vectorize_2arg Number Base.sinc
