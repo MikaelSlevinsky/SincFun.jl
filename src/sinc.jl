@@ -228,7 +228,7 @@ function Base.sinc{T<:Number}(n::Integer,x::T)
         if x == 0
             val = isodd(n) ? zero(T) : (-1)^(n/2)*convert(T,π)^n/(n+1)
         else
-            sp,cp,πk,xk,den = sinpi(x),cospi(x),one(T),one(T),1
+            sp,cp,πk,xk,den = sinpi(x),cospi(x),one(T)/π,one(T),1
             for k=0:n
                 m = mod(k,4)
                 if m == 0
@@ -242,7 +242,7 @@ function Base.sinc{T<:Number}(n::Integer,x::T)
                 end
                 πk,xk,den = πk*π,xk*x,den*(k+1)
             end
-            val *= iseven(n) ? -den/(n+1)/(π*xk) : den/(n+1)/(π*xk)
+            val *= iseven(n) ? -den/(n+1)/xk : den/(n+1)/xk
         end
     elseif n == -1
         val = 0.5+sinint(π*x)/π
