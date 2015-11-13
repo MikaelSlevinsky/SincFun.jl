@@ -1,10 +1,10 @@
-function steig!{T<:FloatingPoint}(d::Array{T,1}, e::Array{T,1}, z::Array{T,1}, maxits::Integer)
+function steig!{T<:AbstractFloat}(d::Array{T,1}, e::Array{T,1}, z::Array{T,1}, maxits::Integer)
     #
     # Finds the eigenvalues and first components of the normalised
     # eigenvectors of a symmetric tridiagonal matrix by the implicit
     # QL method.
     #
-    # d[i]   On entry, holds the ith diagonal entry of the matrix. 
+    # d[i]   On entry, holds the ith diagonal entry of the matrix.
     #        On exit, holds the ith eigenvalue.
     #
     # e[i]   On entry, holds the [i+1,i] entry of the matrix for
@@ -18,7 +18,7 @@ function steig!{T<:FloatingPoint}(d::Array{T,1}, e::Array{T,1}, z::Array{T,1}, m
     #
     # Martin and Wilkinson, Numer. Math. 12: 377-383 (1968).
     # Dubrulle, Numer. Math. 15: 450 (1970).
-    # Handbook for Automatic Computation, Vol ii, Linear Algebra, 
+    # Handbook for Automatic Computation, Vol ii, Linear Algebra,
     #        pp. 241-248, 1971.
     #
     # This is a modified version of the Eispack routine imtql2.
@@ -38,7 +38,7 @@ function steig!{T<:FloatingPoint}(d::Array{T,1}, e::Array{T,1}, z::Array{T,1}, m
             for i = l:n-1
                 if abs(e[i]) <= eps(T) * ( abs(d[i]) + abs(d[i+1]) )
                     m = i
-                    break   
+                    break
                 end
             end
             p = d[l]
@@ -72,7 +72,7 @@ function steig!{T<:FloatingPoint}(d::Array{T,1}, e::Array{T,1}, z::Array{T,1}, m
                     e[i+1] = f * r
                     s = one(T) / r
                     c *= s
-                end 
+                end
                 g = d[i+1] - p
                 r = ( d[i] - g ) * s + 2 * c * b
                 p = s * r
