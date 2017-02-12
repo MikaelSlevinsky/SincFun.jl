@@ -8,8 +8,8 @@
 export roots
 
 function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
-    wv,xv,fv = (-one(T)).^(collect(0:sf.n-1)).*sf.ωv, ψ(sf.domain,convert(T,π)/2*sinh(sf.jh)), sf.fϕv.*sf.ϕpv
-    cutoff = abs(wv) .≥ 10eps(T)
+    wv,xv,fv = (-one(T)).^(collect(0:sf.n-1)).*sf.ωv, ψ(sf.domain,convert(T,π)/2*sinh.(sf.jh)), sf.fϕv.*sf.ϕpv
+    cutoff = abs.(wv) .≥ 10eps(T)
     wv,xv,fv = wv[cutoff],xv[cutoff],fv[cutoff]
     n = length(wv)
     wv,fv = wv/norm(wv),fv/norm(fv)
@@ -18,7 +18,7 @@ function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
     S = sparse(collect(1:n+1),collect(1:n+1),s)
     B = diagm([zero(T);ones(T,n)])
     rts,V = eig(full(S\A*S),B)
-    rts = rts[abs(rts).<Inf]
+    rts = rts[abs.(rts).<Inf]
 end
 
 function roots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
@@ -30,7 +30,7 @@ function roots{D<:Finite,T<:Float64}(sf::sincfun{D,T})
     rts = complexroots(sf)
     rts = real(rts[imag(rts) .== zero(T)])
     a,b = sf.domain.ab
-    rts = sort(rts[a + 10sf.ωscale*eps(T) .< abs(rts) .< b - 10sf.ωscale*eps(T)])
+    rts = sort(rts[a + 10sf.ωscale*eps(T) .< abs.(rts) .< b - 10sf.ωscale*eps(T)])
 end
 
 # This is a first attempt to use Lawrence's O(n^2) algorithm to transform the arrowhead matrix
@@ -39,7 +39,7 @@ end
 #=
 function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
     wv,xv,fv = (-one(T)).^([0:sf.n-1]).*sf.ωv, sf.jh, sf.fϕpv
-    cutoff = abs(wv) .≥ 10eps(T)
+    cutoff = abs.(wv) .≥ 10eps(T)
     wv,xv,fv = wv[cutoff],xv[cutoff],fv[cutoff]
     #wvint,xvint,fvint = interlace2(wv),interlace2(xv),interlace2(fv)
     t,d,c = toupperhessenberg(wv,xv,fv)
@@ -47,8 +47,8 @@ function complexroots{D<:Domain,T<:Float64}(sf::sincfun{D,T})
     [A[1,i] += c[i] for i=1:length(c)]
     B = diagm([zero(T),ones(T,length(xv))])
     rts,V = eig(A,B)
-    rts = rts[abs(rts).<Inf]
-    rts = ψ(sf.domain,convert(T,π)/2*sinh(rts))
+    rts = rts[abs.(rts).<Inf]
+    rts = ψ.(sf.domain,convert(T,π)/2*sinh(rts))
 end
 
 function toupperhessenberg{T<:Number}(w::Vector{T},x::Vector{T},f::Vector{T})

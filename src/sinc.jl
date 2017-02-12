@@ -5,7 +5,7 @@ import Base.Math: @horner
 function sinint(x::Float64)
 # This program computes the sine integral ∫_0^x sin(t)/t dt using the rational approximations of A.J. MacLeod, Numer. Algor., 12:259--272, 1996.
     t = x^2
-    if abs(x) ≤ 6.0
+    if abs2(x) ≤ 36.0
         return x * @horner(t, 1.00000000000000000000E0,
                              -0.44663998931312457298E-1,
                               0.11209146443112369449E-2,
@@ -22,7 +22,7 @@ function sinint(x::Float64)
                               0.10378561511331814674E-11,
                               0.13754880327250272679E-14,
                               0.10223981202236205703E-17)
-    elseif abs(x) ≤ 12.0
+    elseif abs2(x) ≤ 144.0
         return sign(x)*π/2 - cos(x)/x * @horner(1/t, 0.99999999962173909991E0,
                                                      0.36451060338631902917E3,
                                                      0.44218548041288440874E5,
@@ -111,7 +111,6 @@ function sinint{T<:AbstractFloat}(z::T;n::Integer=2^6)
     retval = Tπ/2 - h*(val1*cos(z)+val2*sinc(z/Tπ))
     return z == zero(T) ? zero(T) : z >= zero(T) ? retval : retval-Tπ
 end
-@vectorize_1arg Number sinint
 
 function cosint(x::Float64)
 # This program computes the cosine integral γ + log x + ∫_0^x (cos(t)-1)/t dt using the rational approximations of A.J. MacLeod, Numer. Algor., 12:259--272, 1996.
@@ -219,7 +218,6 @@ function cosint(x::Float64)
                                              0.42519841479489798424E16)/t)
     end
 end
-@vectorize_1arg Float64 cosint
 
 function Base.sinc{T<:Number}(n::Integer,x::T)
 #This program computes the nth sinc differentiation matrices.
@@ -250,4 +248,3 @@ function Base.sinc{T<:Number}(n::Integer,x::T)
     return val
 end
 Base.sinc{T<:Number}(n::T,x::T) = sinc(rount(Int,n),x)
-@vectorize_2arg Number Base.sinc

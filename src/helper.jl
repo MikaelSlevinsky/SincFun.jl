@@ -10,15 +10,14 @@ eps{T<:Real}(::Type{Complex{T}}) = eps(real(T))
 #
 # This function provides a convenient way to query or specify the BigFloat precision.
 #
-digits(n::Int) = set_bigfloat_precision(round(Int,ceil(n*log2(10))))
-digits() = round(Int,floor(get_bigfloat_precision()*log10(2)))
+digits(n::Int) = setprecision(round(Int,ceil(n*log2(10))))
+digits() = round(Int,floor(precision(BigFloat)*log10(2)))
 
 
 h{T<:Number}(::Type{T},n::Int) = log(convert(T,π)*n)/n
 h(n::Int) = h(Float64,n)
 
 ω{T<:Number}(β::T,t::T) = exp(-β*(cosh(t)-one(T)))
-@vectorize_2arg Number ω
 
 
 function interlace{T<:Number}(u::Vector{T})

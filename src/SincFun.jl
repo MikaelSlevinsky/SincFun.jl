@@ -1,6 +1,6 @@
 module SincFun
 
-import Base: +,-,*,.*,/,\
+import Base: +,-,*,/,\
 
 include("helper.jl")
 include("Domains.jl")
@@ -36,26 +36,26 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
     while n < 2^14 && abs(intold-intnew) > abs(intnew)*eps(T)^(1/3)
         n *= 2
         jh = h(T,n)*collect(-n:n)
-        sinhv,coshv = sinh(jh)*π/2,cosh(jh)*π/2
+        sinhv,coshv = sinh.(jh)*π/2,cosh.(jh)*π/2
         fϕv = T[f(ψ(domain,z)) for z in sinhv]
         ϕpv = ψp(domain,sinhv).*coshv
-        test = abs(fϕv.*ϕpv)
-        cutoff = !(!isinf(test).*!isnan(test))
+        test = abs.(fϕv.*ϕpv)
+        cutoff = !(!isinf.(test).*!isnan.(test))
         fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
         intold,intnew = intnew,h(T,n)*sum(fϕv.^2.*ϕpv)
     end
     jh = h(T,n)*(collect(-n:n-1)+one(T)/2)
-    sinhv,coshv = sinh(jh)*π/2,cosh(jh)*π/2
+    sinhv,coshv = sinh.(jh)*π/2,cosh.(jh)*π/2
     fϕv = interlace([fϕv;T[f(ψ(domain,z)) for z in sinhv]])
     ϕpv = interlace([ϕpv;ψp(domain,sinhv).*coshv])
-    test = abs(fϕv.*ϕpv)
-    cutoff = !(!isinf(test).*!isnan(test))
+    test = abs.(fϕv.*ϕpv)
+    cutoff = !(!isinf.(test).*!isnan.(test))
     fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
     ωscale = maximum(test)
     tru = div(findfirst(reverse(interlace2(h(T,n)/2*fϕv.^2.*ϕpv)) .> ωscale*eps(T)^3),2)
     fϕv,ϕpv,jh = fϕv[tru+1:4n-tru+1],ϕpv[tru+1:4n-tru+1],h(T,n)/2*collect(-2n+tru:2n-tru)
     ωβ = -2log(eps(T))/(cosh(jh[end])-one(T))
-    ωv = ωscale*ω(ωβ,jh)
+    ωv = ωscale*ω.(ωβ,jh)
     return sincfun{typeof(domain),T}(length(fϕv),h(T,n)/2,fϕv,ϕpv,ωv,ωscale,ωβ,jh,domain)
 end
 sincfun(f::Function) = sincfun(f,Finite())
@@ -100,7 +100,7 @@ envelope{D<:Domain,T<:Number}(sf::sincfun{D,T},t::T) = sf.ωscale*ω(sf.ωβ,t)/
 
 # Algebra
 
-for op in (:+,:-,:*,:.*)
+for op in (:+,:-,:*)
     @eval begin
         function $op{D<:Domain,T<:Number}(c::Number,sf::sincfun{D,T})
             sf1 = deepcopy(sf)
@@ -146,14 +146,14 @@ end
 # sum, dot, cumsum, norm, and diff.
 
 function Base.sum{D<:Domain,T<:Number}(sf::sincfun{D,T})
-    sinhv = sinh(sf.jh)*π/2
+    sinhv = sinh.(sf.jh)*π/2
     singv = singularities(sf.domain,sinhv)
     sf.h*sum(sf.fϕv.*sf.ϕpv.*singv)
 end
 Base.dot{D<:Domain,T<:Number}(sf1::sincfun{D,T},sf2::sincfun{D,T}) = sum(conj(sf1)*sf2)
 
 function Base.cumsum{D<:Domain,T<:Number}(sf::sincfun{D,T})
-    SM = sinc(-1,one(T)*collect(-sf.n+1:sf.n-1))
+    SM = sinc.(-1,one(T)*collect(-sf.n+1:sf.n-1))
     sf1 = deepcopy(sf)
     temp = sf.h*sf.fϕv.*sf.ϕpv
     [sf1.fϕv[i] = sum(SM[i+sf.n-1:-1:i].*temp) for i=1:sf.n]
@@ -162,15 +162,15 @@ end
 
 function Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T},p::Int)
     if isodd(p) error("Only even integer norms supported.") end
-    sinhv = sinh(sf.jh)*π/2
+    sinhv = sinh.(sf.jh)*π/2
     singv = singularities(sf.domain,sinhv)
     abs(sf.h*sum((sf.fϕv.*singv).^p.*sf.ϕpv))^(one(T)/p)
 end
 Base.norm{D<:Domain,T<:Number}(sf::sincfun{D,T}) = norm(sf,2)
 
 function hilbert{D<:Domain,T<:Number}(sf::sincfun{D,T})
-    sinhv = sinh(sf.jh)*π/2
-    SM = (sinc(0,one(T)/2/sf.h*(sf.jh.-sf.jh')).*(sf.jh.-sf.jh')).^2./(ψ(sf.domain,sinhv).-ψ(sf.domain,sinhv)')
+    sinhv = sinh.(sf.jh)*π/2
+    SM = (sinc.(0,one(T)/2/sf.h*(sf.jh.-sf.jh')).*(sf.jh.-sf.jh')).^2./(ψ(sf.domain,sinhv).-ψ(sf.domain,sinhv)')
     [SM[i,i] = zero(T) for i=1:sf.n]
     sf1 = deepcopy(sf)
     singv = singularities(sf.domain,sinhv)

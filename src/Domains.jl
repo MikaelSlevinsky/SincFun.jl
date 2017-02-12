@@ -1,7 +1,7 @@
 export Domain, Finite, Infinite1, Infinite2, SemiInfinite1, SemiInfinite2
 export ψ, ψinv, ψp
 
-abstract Domain{T}
+abstract type Domain{T} end
 
 # For functions on a Finite domain with algebraic and logarithmic endpoint singularities, use the numbers α, β, γ, and δ to compute the singularities accurately.
 
@@ -9,9 +9,9 @@ type Finite{T} <: Domain{T}
     ab::Vector{T} # endpoints of the interval
     algebraic::Vector{T} # exponents of the algebraic singularities of the endpoints
     logarithmic::Vector{T} # exponents of the logarithmic singularities of the endpoints
-    Finite(ab::Vector{T},algebraic::Vector{T},logarithmic::Vector{T}) = new(ab,algebraic,logarithmic)
+    Finite{T}(ab::Vector{T},algebraic::Vector{T},logarithmic::Vector{T}) where T = new(ab,algebraic,logarithmic)
 end
-Finite{T}(a::T,b::T,α::T,β::T,γ::T,δ::T) = Finite{T}([a,b],[α,β],[γ,δ]) # Algebraic and logarithmic endpoint singularities
+Finite{T}(a::T,b::T,α::T,β::T,γ::T,δ::T) = Finite{T}([a;b],[α;β],[γ;δ]) # Algebraic and logarithmic endpoint singularities
 Finite{T}(a::T,b::T,α::T,β::T) = Finite(a,b,α,β,zero(T),zero(T)) # Only algebraic endpoint singularities
 Finite{T}(a::T,b::T) = Finite(a,b,zero(T),zero(T)) # No endpoint singularities
 Finite{T}(::Type{T}) = Finite(-one(T),one(T)) # Canonical domain
@@ -28,25 +28,25 @@ end
 
 # Every domain must have three functions: ψ, ψinv, and ψp.
 
-ψ(d::Finite,t) = (d.ab[1]+d.ab[2])/2+(d.ab[2]-d.ab[1])/2*tanh(t)
-ψinv(d::Finite,t) = atanh((2t-d.ab[1]-d.ab[2])/(d.ab[2]-d.ab[1]))
-ψp(d::Finite,t) = (d.ab[2]-d.ab[1])/2*sech(t).^2
+ψ(d::Finite,t) = (d.ab[1]+d.ab[2])/2+(d.ab[2]-d.ab[1])/2*tanh.(t)
+ψinv(d::Finite,t) = atanh.((2t-d.ab[1]-d.ab[2])/(d.ab[2]-d.ab[1]))
+ψp(d::Finite,t) = (d.ab[2]-d.ab[1])/2*sech.(t).^2
 
-ψ(d::Infinite1,t) = sinh(t)
-ψinv(d::Infinite1,t) = asinh(t)
-ψp(d::Infinite1,t) = cosh(t)
+ψ(d::Infinite1,t) = sinh.(t)
+ψinv(d::Infinite1,t) = asinh.(t)
+ψp(d::Infinite1,t) = cosh.(t)
 
 ψ(d::Infinite2,t) = t
 ψinv(d::Infinite2,t) = t
 ψp(d::Infinite2,t) = 0*t+1
 
-ψ(d::SemiInfinite1,t) = log1p(exp(t))
-ψinv(d::SemiInfinite1,t) = log(expm1(t))
-ψp(d::SemiInfinite1,t) = 1./(1+exp(-t))
+ψ(d::SemiInfinite1,t) = log1p.(exp.(t))
+ψinv(d::SemiInfinite1,t) = log.(expm1.(t))
+ψp(d::SemiInfinite1,t) = 1./(1+exp.(-t))
 
-ψ(d::SemiInfinite2,t) = exp(t)
-ψinv(d::SemiInfinite2,t) = log(t)
-ψp(d::SemiInfinite2,t) = exp(t)
+ψ(d::SemiInfinite2,t) = exp.(t)
+ψinv(d::SemiInfinite2,t) = log.(t)
+ψp(d::SemiInfinite2,t) = exp.(t)
 
 # singularities is a function that should have an override for every domain that has endpoint singularities.
 

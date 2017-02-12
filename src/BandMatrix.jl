@@ -4,7 +4,7 @@ type BandMatrix{T} <: AbstractMatrix{T}
 	B::Matrix{T}
 	m::Integer
 	n::Integer
-	function BandMatrix{T}(A::AbstractMatrix{T},m::Integer)
+	function BandMatrix{T}(A::AbstractMatrix{T},m::Integer) where T
 		n,An1 = size(A)
 		B = zeros(T,n,2m+1)
 		for k=1:m
@@ -87,7 +87,7 @@ function bandelim!{T1<:Number,T2<:Number}(A::BandMatrix{T1},b::Vector{T2})
 			b[i+j] -= coef*b[i-1]
 		end
 	end
-	
+
 	for i=n:-1:m+1
 		b[i] /=A[i,i]
 		A[i,i] = one(T)
