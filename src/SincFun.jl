@@ -40,7 +40,7 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
         fϕv = T[f(ψ(domain,z)) for z in sinhv]
         ϕpv = ψp(domain,sinhv).*coshv
         test = abs.(fϕv.*ϕpv)
-        cutoff = !(!isinf.(test).*!isnan.(test))
+        cutoff = .!(.!isinf.(test).*.!isnan.(test))
         fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
         intold,intnew = intnew,h(T,n)*sum(fϕv.^2.*ϕpv)
     end
@@ -49,7 +49,7 @@ function sincfun{T<:Number}(f::Function,domain::Domain{T})
     fϕv = interlace([fϕv;T[f(ψ(domain,z)) for z in sinhv]])
     ϕpv = interlace([ϕpv;ψp(domain,sinhv).*coshv])
     test = abs.(fϕv.*ϕpv)
-    cutoff = !(!isinf.(test).*!isnan.(test))
+    cutoff = .!(.!isinf.(test).*.!isnan.(test))
     fϕv[cutoff],ϕpv[cutoff] = zeros(T,sum(cutoff)),zeros(T,sum(cutoff))
     ωscale = maximum(test)
     tru = div(findfirst(reverse(interlace2(h(T,n)/2*fϕv.^2.*ϕpv)) .> ωscale*eps(T)^3),2)
