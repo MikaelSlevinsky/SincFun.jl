@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/MikaelSlevinsky/Sincfun.jl.svg?branch=master)](https://travis-ci.org/MikaelSlevinsky/Sincfun.jl)
 
-This package is a work in progress with the goal of implementing fast algorithms relating to cardinal Sinc expansions of functions and solutions to equations such as ODEs and integral equations, among others.
+This package is a work in progress with the goal of implementing fast algorithms relating to cardinal Sinc expansions of functions and solutions to equations such as ODEs and integral equations, among others. Requires current master of `SpecialFunctions.jl` for `sinint` and `cosint`.
 
 The basic usage of the package is like so:
 

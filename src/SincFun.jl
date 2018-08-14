@@ -1,6 +1,9 @@
 module SincFun
 
+using SpecialFunctions
+
 import Base: +,-,*,/,\
+import SpecialFunctions: sinint, cosint
 
 include("helper.jl")
 include("Domains.jl")
